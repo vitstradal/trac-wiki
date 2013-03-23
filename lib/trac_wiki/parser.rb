@@ -200,11 +200,11 @@ module TracWiki
     # method can be overridden to generate custom
     # markup, for example to add html additional attributes or
     # to put divs around the imgs.
-    def make_image(uri, alt)
+    def make_image(uri, alt='')
       if alt
-        '<img src="' << escape_html(uri) << '" alt="' << escape_html(alt) << '"/>'
+        "<img src='" << escape_html(uri) << "' alt='" << escape_html(alt) << "'/>"
       else
-        '<img src="' << escape_html(uri) << '"/>'
+        "<img src='" << escape_html(uri) << "'/>"
       end
     end
 
@@ -236,6 +236,10 @@ module TracWiki
               @out << escape_html($&)
             end
           end
+        # [[Image(pic.jpg|tag)]]
+        when /\A\[\[Image\(([^|].*?)(\|(.*?))?\)\]\]/   # image 
+          str = $'
+          @out << make_image($1, $3)
         # [[link]]
         when /\A\[\[\s*([^|]*?)\s*(\|\s*(.*?))?\s*\]\]/m
           str = $'
@@ -278,12 +282,16 @@ module TracWiki
         @out << '<tt>' << escape_html($1) << '</tt>'
       when /\A`(.*?)`/                  # inline pre (tt)
         @out << '<tt>' << escape_html($1) << '</tt>'
-      when /\A\{\{\s*(.*?)\s*(\|\s*(.*?)\s*)?\}\}/
-        if uri = make_image_link($1)
-          @out << make_image(uri, $3)
-        else
-          @out << escape_html($&)
-        end                             # link
+#      when /\A\[\[Image\(([^|].*?)(\|(.*?))?\)\]\]/   # image 
+#       @out << make_image($1, $3)
+
+#      when /\A\{\{\s*(.*?)\s*(\|\s*(.*?)\s*)?\}\}/
+#        if uri = make_image_link($1)
+#          @out << make_image(uri, $3)
+#        else
+#          @out << escape_html($&)
+#        end                             # link
+
       when /\A([:alpha:]|[:digit:])+/
         @out << $&                      # word
       when /\A\s+/
@@ -460,26 +468,41 @@ module TracWiki
           end_tag
           start_tag('dd')
 
-        when /\A\s*(>[>\s]*)(.*?)$(\r?\n)?/
-          start_paragraph if !@stack.include? 'p'
-          level, quote = $1.count('>'), $2
-          blockquote_level_to(level)
-          parse_inline(quote.strip)
-
         # li
         when /\A(\s*)([*-]|[aAIi\d]\.)\s+(.*?)$(\r?\n)?/
           parse_li_line($1.size, $2, $3)
 
+        when /\A(>[>\s]*)(.*?)$(\r?\n)?/
+          # citation
+          level, quote =  $1.count('>'), $2
+
+          start_paragraph if !@stack.include? 'p'
+          blockquote_level_to(level)
+          parse_inline(quote.strip)
+
+
         # ordinary line
-        when /\A([ \t]*\S+.*?)$(\r?\n)?/
+        when /\A(\s*)(\S+.*?)$(\r?\n)?/
+          spc_size, text =  $1.size, $2
+
           if @stack.include?('li') ||@stack.include?('dl')
+
+            # dl, li continuation
             parse_inline(' ')
-            parse_inline($1)
+            parse_inline(text)
+
+          elsif spc_size > 0
+            # quote continuation
+            start_paragraph if !@stack.include? 'p'
+            blockquote_level_to(1)
+            parse_inline(text)
+
           else
+            # real ordinary line
             start_paragraph
-            parse_inline($1)
+            parse_inline(text)
           end
-        else
+        else # case str
           raise "Parse error at #{str[0,30].inspect}"
         end
         str = $'

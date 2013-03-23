@@ -174,7 +174,7 @@ describe TracWiki::Parser do
 
     # WRNING: Parsing markup within a link is optional
     tc "<p><a href=\"Weird+Stuff\"><strong>Weird</strong> <em>Stuff</em></a></p>", "[[Weird Stuff|**Weird** ''Stuff'']]"
-    tc("<p><a href=\"http://example.org/\"><img src=\"image.jpg\"/></a></p>", "[[http://example.org/|{{image.jpg}}]]")
+    #tc("<p><a href=\"http://example.org/\"><img src='image.jpg'/></a></p>", "[[http://example.org/|{{image.jpg}}]]")
 
     # Inside bold
     tc "<p><strong><a href=\"link\">link</a></strong></p>", "**[[link]]**"
@@ -238,7 +238,9 @@ describe TracWiki::Parser do
     tc "<p><blockquote>Monty Python q2</blockquote></p>", "> Monty Python\n>q2\n"
     tc "<p><blockquote>Monty Python <strong>q2</strong></blockquote></p>", "> Monty Python\n>**q2**\n"
     tc "<p><blockquote>Monty Python<blockquote>q2</blockquote></blockquote></p>", "> Monty Python\n> > q2\n"
+    tc "<p><blockquote>Monty Python<blockquote>q2 q3</blockquote></blockquote></p>", "> Monty Python\n> > q2\n>>q3\n"
     tc "<p><blockquote>Monty Python<blockquote><em>q2</em></blockquote>q1</blockquote></p>", ">Monty Python\n> > ''q2''\n>q1"
+    tc "<p><blockquote>Monty Python rules</blockquote></p>", "  Monty Python\n rules\n"
   end
   it 'should parse definition list' do
     # FIXME: trailing space 
@@ -393,12 +395,13 @@ describe TracWiki::Parser do
 
   it 'should parse ambiguious bold and lists' do
     tc "<p><strong> bold text </strong></p>", "** bold text **"
-    tc "<p> <strong> bold text </strong></p>", " ** bold text **"
+    tc "<p><blockquote><strong> bold text </strong></blockquote></p>", " ** bold text **"
   end
 
   it 'should parse nowiki' do
     # ... works as block
     tc "<pre>Hello</pre>", "{{{\nHello\n}}}\n"
+    tc "<p><tt>{{{-}}}</tt></p>", "`{{{-}}}`\n"
 
     # ... works inline
     tc "<p>Hello <tt>world</tt>.</p>", "Hello {{{world}}}."
@@ -408,8 +411,8 @@ describe TracWiki::Parser do
     tc "<pre>**Hello**</pre>", "{{{\n**Hello**\n}}}\n"
 
     # Leading whitespaces are not permitted
-    tc("<p> {{{ Hello }}}</p>", " {{{\nHello\n}}}")
-    tc("<p>{{{ Hello }}}</p>", "{{{\nHello\n }}}")
+#    tc("<p>{{{ Hello }}}</p>", " {{{\nHello\n}}}")
+    tc("<p>{{{ Hello<blockquote>}}}</blockquote></p>", "{{{\nHello\n }}}")
 
     # Assumed: Should preserve whitespace
     tc("<pre> \t Hello, \t \n \t World \t </pre>",
@@ -430,7 +433,8 @@ describe TracWiki::Parser do
     tc("<p>&lt;b&gt;not bold&lt;/b&gt;</p>", "<b>not bold</b>")
 
     # Image tags should be escape
-    tc("<p><img src=\"image.jpg\" alt=\"&quot;tag&quot;\"/></p>", "{{image.jpg|\"tag\"}}")
+    tc("<p><img src='image.jpg'/></p>", "[[Image(image.jpg)]]")
+    tc("<p><img src='image.jpg' alt='&quot;tag&quot;'/></p>", "[[Image(image.jpg|\"tag\")]]")
 
     # Malicious links should not be converted.
     tc("<p><a href=\"javascript%3Aalert%28%22Boo%21%22%29\">Click</a></p>", "[[javascript:alert(\"Boo!\")|Click]]")
@@ -442,7 +446,9 @@ describe TracWiki::Parser do
     tc "<p>* Not Bullet</p>", "!* Not Bullet"
     # Following char is not a blank (space or line feed)
     tc "<p>Hello ~ world</p>", "Hello ~ world\n"
-    tc "<p>Hello ~ world</p>", "Hello ~\nworld\n"
+    tc "<p>Hello ! world</p>", "Hello ! world\n"
+    tc "<p>Hello ! world</p>", "Hello ! world\n"
+    tc "<p>Hello ! world</p>", "Hello !\nworld\n"
     # Not escaping inside URLs 
     tc "<p><a href=\"http://example.org/~user/\">http://example.org/~user/</a></p>", "http://example.org/~user/"
 
@@ -465,8 +471,8 @@ describe TracWiki::Parser do
     tc "<p>---- foo</p>", "---- foo\n"
 
     # [...] no whitespace is allowed between them
-    tc "<p> -- -- </p>", " -- -- "
-    tc "<p> -- -- </p>", " --\t-- "
+    tc "<p>-- -- </p>", "-- -- "
+    tc "<p>-- -- </p>", "--\t-- "
   end
 
   it 'should parse table' do
@@ -503,7 +509,7 @@ describe TracWiki::Parser do
     # Equal sign after pipe make a header
     tc "<table><tr><th>Header</th></tr></table>", "||=Header=||"
 
-    tc "<table><tr><td>c1</td><td><a href=\"Link\">Link text</a></td><td><img src=\"Image\" alt=\"Image text\"/></td></tr></table>", "||c1||[[Link|Link text]]||{{Image|Image text}}||"
+    tc "<table><tr><td>c1</td><td><a href=\"Link\">Link text</a></td><td><img src='Image'/></td></tr></table>", "||c1||[[Link|Link text]]||[[Image(Image)]]||"
   end
 
   it 'should parse following table' do
@@ -678,9 +684,9 @@ describe TracWiki::Parser do
   end
 
   it 'should parse image' do
-    tc("<p><img src=\"image.jpg\"/></p>", "{{image.jpg}}")
-    tc("<p><img src=\"image.jpg\" alt=\"tag\"/></p>", "{{image.jpg|tag}}")
-    tc("<p><img src=\"http://example.org/image.jpg\"/></p>", "{{http://example.org/image.jpg}}")
+    tc("<p><img src='image.jpg'/></p>", "[[Image(image.jpg)]]")
+    tc("<p><img src='image.jpg' alt='tag'/></p>", "[[Image(image.jpg|tag)]]")
+    tc("<p><img src='http://example.org/image.jpg'/></p>", "[[Image(http://example.org/image.jpg)]]")
   end
 
   it 'should parse bold combo' do
