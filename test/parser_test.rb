@@ -232,10 +232,23 @@ describe TracWiki::Parser do
     tc "<p>This is the first line,<br/>and this is the second.</p>", "This is the first line,[[Br]]and this is the second."
   end
 
+  it 'should parse blockquote' do
+    tc "<p><blockquote>Monty Python</blockquote></p>", "> Monty Python\n"
+    tc "<p><blockquote>Monty Python q2</blockquote></p>", "> Monty Python\n> q2\n"
+    tc "<p><blockquote>Monty Python q2</blockquote></p>", "> Monty Python\n>q2\n"
+    tc "<p><blockquote>Monty Python <strong>q2</strong></blockquote></p>", "> Monty Python\n>**q2**\n"
+    tc "<p><blockquote>Monty Python<blockquote>q2</blockquote></blockquote></p>", "> Monty Python\n> > q2\n"
+    tc "<p><blockquote>Monty Python<blockquote><em>q2</em></blockquote>q1</blockquote></p>", ">Monty Python\n> > ''q2''\n>q1"
+  end
+  it 'should parse definition list' do
+    # FIXME: trailing space 
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python:: \n   definition\n"
+  end
   it 'should parse unordered_lists' do
     # List items begin with a * at the beginning of a line.
     # An item ends at the next *
-    tc "<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>", "* Item 1\n* Item 2\n-\t\tItem 3\n"
+
+    tc "<ul><li>Item 1 next</li></ul>", "* Item 1\n  next\n"
 
     #  Whitespace is optional before and after the *.
     tc("<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>",

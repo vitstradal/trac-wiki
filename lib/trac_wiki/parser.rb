@@ -404,6 +404,22 @@ module TracWiki
 
     end
 
+    def blockquote_level_to(level)
+      cur_level = @stack.count('blockquote')
+      if cur_level ==  level
+        @out << ' '
+        return
+      end
+      while cur_level < level
+        cur_level += 1
+        start_tag('blockquote')
+      end
+      while cur_level > level
+        cur_level -= 1 if @stack.last == 'blockquote'
+        end_tag
+      end
+    end
+
     def parse_block(str)
       until str.empty?
         case str
@@ -436,6 +452,19 @@ module TracWiki
         # empty line
         when /\A\s*$(\r?\n)?/
           end_paragraph
+        when /\A([\w\s]*)::\s*/
+          term = $1
+          start_tag('dl')
+          start_tag('dt')
+          @out << escape_html(term)
+          end_tag
+          start_tag('dd')
+
+        when /\A\s*(>[>\s]*)(.*?)$(\r?\n)?/
+          start_paragraph if !@stack.include? 'p'
+          level, quote = $1.count('>'), $2
+          blockquote_level_to(level)
+          parse_inline(quote.strip)
 
         # li
         when /\A(\s*)([*-]|[aAIi\d]\.)\s+(.*?)$(\r?\n)?/
@@ -443,7 +472,7 @@ module TracWiki
 
         # ordinary line
         when /\A([ \t]*\S+.*?)$(\r?\n)?/
-          if @stack.include?('li')
+          if @stack.include?('li') ||@stack.include?('dl')
             parse_inline(' ')
             parse_inline($1)
           else
