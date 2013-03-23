@@ -13,8 +13,8 @@ require 'uri'
 # **Bold text**
 # ''Italic text''
 # [[Links]]
-# ||=Table||=Heading||
-# || Table|| Cells ||
+# ||=Table=||=Heading=||
+# || Table || Cells   ||
 # [[Image(image.png)]]
 #
 # The simplest interface is TracWiki.render. The default handling of
@@ -111,6 +111,8 @@ module TracWiki
       tagi = @stacki.pop
       if tag == 'strongem'
         @out << '</em></strong>'
+      elsif tag == 'p'
+        @out << "</p>\n"
       else
         @out << "</#{tag}>"
       end

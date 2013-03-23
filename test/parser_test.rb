@@ -13,8 +13,8 @@ end
 describe TracWiki::Parser do
   it 'should parse bold' do
     # Bold can be used inside paragraphs
-    tc "<p>This <strong>is</strong> bold</p>", "This **is** bold"
-    tc "<p>This <strong>is</strong> bold and <strong>bold</strong>ish</p>", "This **is** bold and **bold**ish"
+    tc "<p>This <strong>is</strong> bold</p>\n", "This **is** bold"
+    tc "<p>This <strong>is</strong> bold and <strong>bold</strong>ish</p>\n", "This **is** bold and **bold**ish"
 
     # Bold can be used inside list items
     tc "<ul><li>This is <strong>bold</strong></li></ul>", "* This is **bold**"
@@ -24,11 +24,11 @@ describe TracWiki::Parser do
        "||This is **bold**||")
 
     # Links can appear inside bold text:
-    tc("<p>A bold link: <strong><a href=\"http://example.org/\">http://example.org/</a> nice! </strong></p>",
+    tc("<p>A bold link: <strong><a href=\"http://example.org/\">http://example.org/</a> nice! </strong></p>\n",
        "A bold link: **http://example.org/ nice! **")
 
     # Bold will end at the end of paragraph
-    tc "<p>This <strong>is bold</strong></p>", "This **is bold"
+    tc "<p>This <strong>is bold</strong></p>\n", "This **is bold"
 
     # Bold will end at the end of list items
     tc("<ul><li>Item <strong>bold</strong></li><li>Item normal</li></ul>",
@@ -39,36 +39,36 @@ describe TracWiki::Parser do
        "||Item **bold||Another **bold||")
 
     # Bold should not cross paragraphs
-    tc("<p>This <strong>is</strong></p><p>bold<strong> maybe</strong></p>",
+    tc("<p>This <strong>is</strong></p>\n<p>bold<strong> maybe</strong></p>\n",
        "This **is\n\nbold** maybe")
 
     # Bold should be able to cross lines
-    tc "<p>This <strong>is bold</strong></p>", "This **is\nbold**"
+    tc "<p>This <strong>is bold</strong></p>\n", "This **is\nbold**"
   end
 
   it 'should parse bolditalic' do
-    tc '<p>This is <strong><em>bolditallic</em></strong>.</p>', "This is '''''bolditallic'''''."
-    tc '<p>This is <strong> <em>bolditallic</em> </strong>.</p>', "This is ''' ''bolditallic'' '''."
-    tc '<p>This is <em> <strong>bolditallic</strong> </em>.</p>', "This is '' '''bolditallic''' ''."
-    tc '<p>This is <strong>bold</strong>.</p>', "This is '''bold'''."
-    #fuj tc '<p>This is <strong><em>bolditallic</em></strong>.</p>', "This is **''bolditallic**''."
+    tc "<p>This is <strong><em>bolditallic</em></strong>.</p>\n", "This is '''''bolditallic'''''."
+    tc "<p>This is <strong> <em>bolditallic</em> </strong>.</p>\n", "This is ''' ''bolditallic'' '''."
+    tc "<p>This is <em> <strong>bolditallic</strong> </em>.</p>\n", "This is '' '''bolditallic''' ''."
+    tc "<p>This is <strong>bold</strong>.</p>\n", "This is '''bold'''."
+    #fuj tc '<p>This is <strong><em>bolditallic</em></strong>.</p>\n', "This is **''bolditallic**''."
   end
   it 'should parse monospace' do
-    tc "<p>This is <tt>monospace</tt>.</p>", "This is {{{monospace}}}."
-    tc "<p>This is <tt>mon**o**space</tt>.</p>", "This is {{{mon**o**space}}}."
-    tc "<p>This is <tt>mon&lt;o&gt;space</tt>.</p>", "This is {{{mon<o>space}}}."
-    tc "<p>This is <tt>mon''o''space</tt>.</p>", "This is {{{mon''o''space}}}."
-    tc "<p>This is <tt>mon''o''space</tt>.</p>", "This is `mon''o''space`."
-    tc "<p>This is <tt>mon{{o}}space</tt>.</p>", "This is {{{mon{{o}}space}}}."
-    tc "<p>This is <tt>mon``o''space</tt>.</p>", "This is {{{mon``o''space}}}."
-    tc "<p>This is <tt>mon{{o}}space</tt>.</p>", "This is `mon{{o}}space`."
+    tc "<p>This is <tt>monospace</tt>.</p>\n", "This is {{{monospace}}}."
+    tc "<p>This is <tt>mon**o**space</tt>.</p>\n", "This is {{{mon**o**space}}}."
+    tc "<p>This is <tt>mon&lt;o&gt;space</tt>.</p>\n", "This is {{{mon<o>space}}}."
+    tc "<p>This is <tt>mon''o''space</tt>.</p>\n", "This is {{{mon''o''space}}}."
+    tc "<p>This is <tt>mon''o''space</tt>.</p>\n", "This is `mon''o''space`."
+    tc "<p>This is <tt>mon{{o}}space</tt>.</p>\n", "This is {{{mon{{o}}space}}}."
+    tc "<p>This is <tt>mon``o''space</tt>.</p>\n", "This is {{{mon``o''space}}}."
+    tc "<p>This is <tt>mon{{o}}space</tt>.</p>\n", "This is `mon{{o}}space`."
   end
 
   it 'should parse italic' do
     # Italic can be used inside paragraphs
-    tc("<p>This <em>is</em> italic</p>",
+    tc("<p>This <em>is</em> italic</p>\n",
        "This ''is'' italic")
-    tc("<p>This <em>is</em> italic and <em>italic</em>ish</p>",
+    tc("<p>This <em>is</em> italic and <em>italic</em>ish</p>\n",
        "This ''is'' italic and ''italic''ish")
 
     # Italic can be used inside list items
@@ -79,11 +79,11 @@ describe TracWiki::Parser do
        "||This is ''italic''||")
 
     # Links can appear inside italic text:
-    tc("<p>A italic link: <em><a href=\"http://example.org/\">http://example.org/</a> nice! </em></p>",
+    tc("<p>A italic link: <em><a href=\"http://example.org/\">http://example.org/</a> nice! </em></p>\n",
        "A italic link: ''http://example.org/ nice! ''")
 
     # Italic will end at the end of paragraph
-    tc "<p>This <em>is italic</em></p>", "This ''is italic"
+    tc "<p>This <em>is italic</em></p>\n", "This ''is italic"
 
     # Italic will end at the end of list items
     tc("<ul><li>Item <em>italic</em></li><li>Item normal</li></ul>",
@@ -94,22 +94,22 @@ describe TracWiki::Parser do
        "||Item ''italic||Another ''italic")
 
     # Italic should not cross paragraphs
-    tc("<p>This <em>is</em></p><p>italic<em> maybe</em></p>",
+    tc("<p>This <em>is</em></p>\n<p>italic<em> maybe</em></p>\n",
        "This ''is\n\nitalic'' maybe")
 
     # Italic should be able to cross lines
-    tc "<p>This <em>is italic</em></p>", "This ''is\nitalic''"
+    tc "<p>This <em>is italic</em></p>\n", "This ''is\nitalic''"
   end
 
   it 'should parse bold italics' do
     # By example
-    tc "<p><strong><em>bold italics</em></strong></p>", "**''bold italics''**"
+    tc "<p><strong><em>bold italics</em></strong></p>\n", "**''bold italics''**"
 
     # By example
-    tc "<p><em><strong>bold italics</strong></em></p>", "''**bold italics**''"
+    tc "<p><em><strong>bold italics</strong></em></p>\n", "''**bold italics**''"
 
     # By example
-    tc "<p><em>This is <strong>also</strong> good.</em></p>", "''This is **also** good.''"
+    tc "<p><em>This is <strong>also</strong> good.</em></p>\n", "''This is **also** good.''"
   end
 
   it 'should parse headings' do
@@ -142,105 +142,105 @@ describe TracWiki::Parser do
 
     # WARNING: !! XXX doesn't specify if text after closing equal signs
     # !!becomes part of the heading or invalidates the entire heading.
-    # tc "<p> == Heading 2 == foo</p>", " == Heading 2 == foo"
+    # tc "<p> == Heading 2 == foo</p>\n", " == Heading 2 == foo"
     tc "<h2>Heading 2 == foo</h2>", " == Heading 2 == foo"
 
     # Line must start with equal sign
-    tc "<p>foo = Heading 1 =</p>", "foo = Heading 1 ="
+    tc "<p>foo = Heading 1 =</p>\n", "foo = Heading 1 ="
   end
 
   it 'should parse links' do
     #  Links
-    tc "<p><a href=\"link\">link</a></p>", "[[link]]"
+    tc "<p><a href=\"link\">link</a></p>\n", "[[link]]"
 
     #  Links can appear in paragraphs (i.e. inline item)
-    tc "<p>Hello, <a href=\"world\">world</a></p>", "Hello, [[world]]"
+    tc "<p>Hello, <a href=\"world\">world</a></p>\n", "Hello, [[world]]"
 
     #  Named links
-    tc "<p><a href=\"MyBigPage\">Go to my page</a></p>", "[[MyBigPage|Go to my page]]"
+    tc "<p><a href=\"MyBigPage\">Go to my page</a></p>\n", "[[MyBigPage|Go to my page]]"
 
     #  URLs
-    tc "<p><a href=\"http://www.example.org/\">http://www.example.org/</a></p>", "[[http://www.example.org/]]"
+    tc "<p><a href=\"http://www.example.org/\">http://www.example.org/</a></p>\n", "[[http://www.example.org/]]"
 
     #  Single punctuation characters at the end of URLs
     # should not be considered a part of the URL.
     [',','.','?','!',':',';','\'','"'].each do |punct|
       esc_punct = CGI::escapeHTML(punct)
-      tc "<p><a href=\"http://www.example.org/\">http://www.example.org/</a>#{esc_punct}</p>", "http://www.example.org/#{punct}"
+      tc "<p><a href=\"http://www.example.org/\">http://www.example.org/</a>#{esc_punct}</p>\n", "http://www.example.org/#{punct}"
     end
     #  Nameds URLs (by example)
-    tc("<p><a href=\"http://www.example.org/\">Visit the Example website</a></p>",
+    tc("<p><a href=\"http://www.example.org/\">Visit the Example website</a></p>\n",
        "[[http://www.example.org/|Visit the Example website]]")
 
     # WRNING: Parsing markup within a link is optional
-    tc "<p><a href=\"Weird+Stuff\"><strong>Weird</strong> <em>Stuff</em></a></p>", "[[Weird Stuff|**Weird** ''Stuff'']]"
-    #tc("<p><a href=\"http://example.org/\"><img src='image.jpg'/></a></p>", "[[http://example.org/|{{image.jpg}}]]")
+    tc "<p><a href=\"Weird+Stuff\"><strong>Weird</strong> <em>Stuff</em></a></p>\n", "[[Weird Stuff|**Weird** ''Stuff'']]"
+    #tc("<p><a href=\"http://example.org/\"><img src='image.jpg'/></a></p>\n", "[[http://example.org/|{{image.jpg}}]]")
 
     # Inside bold
-    tc "<p><strong><a href=\"link\">link</a></strong></p>", "**[[link]]**"
+    tc "<p><strong><a href=\"link\">link</a></strong></p>\n", "**[[link]]**"
 
     # Whitespace inside [[ ]] should be ignored
-    tc("<p><a href=\"link\">link</a></p>", "[[ link ]]")
-    tc("<p><a href=\"link+me\">link me</a></p>", "[[ link me ]]")
-    tc("<p><a href=\"http://dot.com/\">dot.com</a></p>", "[[ http://dot.com/ \t| \t dot.com ]]")
-    tc("<p><a href=\"http://dot.com/\">dot.com</a></p>", "[[ http://dot.com/ | dot.com ]]")
+    tc("<p><a href=\"link\">link</a></p>\n", "[[ link ]]")
+    tc("<p><a href=\"link+me\">link me</a></p>\n", "[[ link me ]]")
+    tc("<p><a href=\"http://dot.com/\">dot.com</a></p>\n", "[[ http://dot.com/ \t| \t dot.com ]]")
+    tc("<p><a href=\"http://dot.com/\">dot.com</a></p>\n", "[[ http://dot.com/ | dot.com ]]")
   end
 
   it 'should parse freestanding urls' do
     # Free-standing URL's should be turned into links
-    tc "<p><a href=\"http://www.example.org/\">http://www.example.org/</a></p>", "http://www.example.org/"
+    tc "<p><a href=\"http://www.example.org/\">http://www.example.org/</a></p>\n", "http://www.example.org/"
 
     # URL ending in .
-    tc "<p>Text <a href=\"http://example.org\">http://example.org</a>. other text</p>", "Text http://example.org. other text"
+    tc "<p>Text <a href=\"http://example.org\">http://example.org</a>. other text</p>\n", "Text http://example.org. other text"
 
     # URL ending in ),
-    tc "<p>Text (<a href=\"http://example.org\">http://example.org</a>), other text</p>", "Text (http://example.org), other text"
+    tc "<p>Text (<a href=\"http://example.org\">http://example.org</a>), other text</p>\n", "Text (http://example.org), other text"
 
     # URL ending in ).
-    tc "<p>Text (<a href=\"http://example.org\">http://example.org</a>). other text</p>", "Text (http://example.org). other text"
+    tc "<p>Text (<a href=\"http://example.org\">http://example.org</a>). other text</p>\n", "Text (http://example.org). other text"
 
     # URL ending in ).
-    tc "<p>Text (<a href=\"http://example.org\">http://example.org</a>).</p>", "Text (http://example.org)."
+    tc "<p>Text (<a href=\"http://example.org\">http://example.org</a>).</p>\n", "Text (http://example.org)."
 
     # URL ending in )
-    tc "<p>Text (<a href=\"http://example.org\">http://example.org</a>)</p>", "Text (http://example.org)"
+    tc "<p>Text (<a href=\"http://example.org\">http://example.org</a>)</p>\n", "Text (http://example.org)"
   end
 
   it 'should parse paragraphs' do
     # One or more blank lines end paragraphs.
-    tc "<p>This is my text.</p><p>This is more text.</p>", "This is\nmy text.\n\nThis is\nmore text."
-    tc "<p>This is my text.</p><p>This is more text.</p>", "This is\nmy text.\n\n\nThis is\nmore text."
-    tc "<p>This is my text.</p><p>This is more text.</p>", "This is\nmy text.\n\n\n\nThis is\nmore text."
+    tc "<p>This is my text.</p>\n<p>This is more text.</p>\n", "This is\nmy text.\n\nThis is\nmore text."
+    tc "<p>This is my text.</p>\n<p>This is more text.</p>\n", "This is\nmy text.\n\n\nThis is\nmore text."
+    tc "<p>This is my text.</p>\n<p>This is more text.</p>\n", "This is\nmy text.\n\n\n\nThis is\nmore text."
 
     # A list end paragraphs too.
-    tc "<p>Hello</p><ul><li>Item</li></ul>", "Hello\n* Item\n"
+    tc "<p>Hello</p>\n<ul><li>Item</li></ul>", "Hello\n* Item\n"
 
     #  A table end paragraphs too.
-    tc "<p>Hello</p><table><tr><td>Cell</td></tr></table>", "Hello\n||Cell||"
+    tc "<p>Hello</p>\n<table><tr><td>Cell</td></tr></table>", "Hello\n||Cell||"
 
     #  A nowiki end paragraphs too.
-    tc "<p>Hello</p><pre>nowiki</pre>", "Hello\n{{{\nnowiki\n}}}\n"
+    tc "<p>Hello</p>\n<pre>nowiki</pre>", "Hello\n{{{\nnowiki\n}}}\n"
 
     # WARNING: A heading ends a paragraph (not specced)
-    tc "<p>Hello</p><h1>Heading</h1>", "Hello\n= Heading =\n"
+    tc "<p>Hello</p>\n<h1>Heading</h1>", "Hello\n= Heading =\n"
   end
 
   it 'should parse linebreaks' do
     #  \\ (wiki-style) for line breaks.
-    tc "<p>This is the first line,<br/>and this is the second.</p>", "This is the first line,\\\\and this is the second."
-    tc "<p>This is the first line,<br/>and this is the second.</p>", "This is the first line,[[br]]and this is the second."
-    tc "<p>This is the first line,<br/>and this is the second.</p>", "This is the first line,[[Br]]and this is the second."
+    tc "<p>This is the first line,<br/>and this is the second.</p>\n", "This is the first line,\\\\and this is the second."
+    tc "<p>This is the first line,<br/>and this is the second.</p>\n", "This is the first line,[[br]]and this is the second."
+    tc "<p>This is the first line,<br/>and this is the second.</p>\n", "This is the first line,[[Br]]and this is the second."
   end
 
   it 'should parse blockquote' do
-    tc "<p><blockquote>Monty Python</blockquote></p>", "> Monty Python\n"
-    tc "<p><blockquote>Monty Python q2</blockquote></p>", "> Monty Python\n> q2\n"
-    tc "<p><blockquote>Monty Python q2</blockquote></p>", "> Monty Python\n>q2\n"
-    tc "<p><blockquote>Monty Python <strong>q2</strong></blockquote></p>", "> Monty Python\n>**q2**\n"
-    tc "<p><blockquote>Monty Python<blockquote>q2</blockquote></blockquote></p>", "> Monty Python\n> > q2\n"
-    tc "<p><blockquote>Monty Python<blockquote>q2 q3</blockquote></blockquote></p>", "> Monty Python\n> > q2\n>>q3\n"
-    tc "<p><blockquote>Monty Python<blockquote><em>q2</em></blockquote>q1</blockquote></p>", ">Monty Python\n> > ''q2''\n>q1"
-    tc "<p><blockquote>Monty Python rules</blockquote></p>", "  Monty Python\n rules\n"
+    tc "<p><blockquote>Monty Python</blockquote></p>\n", "> Monty Python\n"
+    tc "<p><blockquote>Monty Python q2</blockquote></p>\n", "> Monty Python\n> q2\n"
+    tc "<p><blockquote>Monty Python q2</blockquote></p>\n", "> Monty Python\n>q2\n"
+    tc "<p><blockquote>Monty Python <strong>q2</strong></blockquote></p>\n", "> Monty Python\n>**q2**\n"
+    tc "<p><blockquote>Monty Python<blockquote>q2</blockquote></blockquote></p>\n", "> Monty Python\n> > q2\n"
+    tc "<p><blockquote>Monty Python<blockquote>q2 q3</blockquote></blockquote></p>\n", "> Monty Python\n> > q2\n>>q3\n"
+    tc "<p><blockquote>Monty Python<blockquote><em>q2</em></blockquote>q1</blockquote></p>\n", ">Monty Python\n> > ''q2''\n>q1"
+    tc "<p><blockquote>Monty Python rules</blockquote></p>\n", "  Monty Python\n rules\n"
   end
   it 'should parse definition list' do
     # FIXME: trailing space 
@@ -260,7 +260,7 @@ describe TracWiki::Parser do
     tc("<ul><li><strong>Item 1</strong></li></ul>", "* **Item 1")
 
     #  An item ends at blank line
-    tc("<ul><li>Item</li></ul><p>Par</p>", "* Item\n\nPar\n")
+    tc("<ul><li>Item</li></ul><p>Par</p>\n", "* Item\n\nPar\n")
 
     #  An item ends at a heading
     tc("<ul><li>Item</li></ul><h1>Heading</h1>", "* Item\n= Heading =\n")
@@ -298,7 +298,7 @@ describe TracWiki::Parser do
        "1. Hello,\n   World!\n  * Not bold\n")
 
     #  [...] otherwise it will be treated as the beginning of bold text.
-    tc("<ul><li>Hello, World!</li></ul><p><strong>Not bold</strong></p>",
+    tc("<ul><li>Hello, World!</li></ul><p><strong>Not bold</strong></p>\n",
        "* Hello,\nWorld!\n\n**Not bold\n")
   end
 
@@ -316,7 +316,7 @@ describe TracWiki::Parser do
     tc("<ol><li><strong>Item 1</strong></li></ol>", "1. **Item 1")
 
     #  An item ends at blank line
-    tc("<ol><li>Item</li></ol><p>Par</p>", "1. Item\n\nPar\n")
+    tc("<ol><li>Item</li></ol><p>Par</p>\n", "1. Item\n\nPar\n")
 
     #  An item ends at a heading
     tc("<ol><li>Item</li></ol><h1>Heading</h1>", "1. Item\n= Heading =\n")
@@ -381,38 +381,38 @@ describe TracWiki::Parser do
 
   it 'should parse ambiguious italics and url' do
     # Uncommon URL schemes should not be parsed as URLs
-    tc("<p>This is what can go wrong:<em>this should be an italic text</em>.</p>",
+    tc("<p>This is what can go wrong:<em>this should be an italic text</em>.</p>\n",
        "This is what can go wrong:''this should be an italic text''.")
 
     # A link inside italic text
-    tc("<p>How about <em>a link, like <a href=\"http://example.org\">http://example.org</a>, in italic</em> text?</p>",
+    tc("<p>How about <em>a link, like <a href=\"http://example.org\">http://example.org</a>, in italic</em> text?</p>\n",
        "How about ''a link, like http://example.org, in italic'' text?")
 
     # Another test 
-    tc("<p>Formatted fruits, for example:<em>apples</em>, oranges, <strong>pears</strong> ...</p>",
+    tc("<p>Formatted fruits, for example:<em>apples</em>, oranges, <strong>pears</strong> ...</p>\n",
        "Formatted fruits, for example:''apples'', oranges, **pears** ...")
   end
 
   it 'should parse ambiguious bold and lists' do
-    tc "<p><strong> bold text </strong></p>", "** bold text **"
-    tc "<p><blockquote><strong> bold text </strong></blockquote></p>", " ** bold text **"
+    tc "<p><strong> bold text </strong></p>\n", "** bold text **"
+    tc "<p><blockquote><strong> bold text </strong></blockquote></p>\n", " ** bold text **"
   end
 
   it 'should parse nowiki' do
     # ... works as block
     tc "<pre>Hello</pre>", "{{{\nHello\n}}}\n"
-    tc "<p><tt>{{{-}}}</tt></p>", "`{{{-}}}`\n"
+    tc "<p><tt>{{{-}}}</tt></p>\n", "`{{{-}}}`\n"
 
     # ... works inline
-    tc "<p>Hello <tt>world</tt>.</p>", "Hello {{{world}}}."
-    tc "<p><tt>Hello</tt> <tt>world</tt>.</p>", "{{{Hello}}} {{{world}}}."
+    tc "<p>Hello <tt>world</tt>.</p>\n", "Hello {{{world}}}."
+    tc "<p><tt>Hello</tt> <tt>world</tt>.</p>\n", "{{{Hello}}} {{{world}}}."
 
     # No wiki markup is interpreted inbetween
     tc "<pre>**Hello**</pre>", "{{{\n**Hello**\n}}}\n"
 
     # Leading whitespaces are not permitted
-#    tc("<p>{{{ Hello }}}</p>", " {{{\nHello\n}}}")
-    tc("<p>{{{ Hello<blockquote>}}}</blockquote></p>", "{{{\nHello\n }}}")
+#    tc("<p>{{{ Hello }}}</p>\n", " {{{\nHello\n}}}")
+    tc("<p>{{{ Hello<blockquote>}}}</blockquote></p>\n", "{{{\nHello\n }}}")
 
     # Assumed: Should preserve whitespace
     tc("<pre> \t Hello, \t \n \t World \t </pre>",
@@ -422,38 +422,38 @@ describe TracWiki::Parser do
     tc("<pre>nowikiblock\n}}}</pre>", "{{{\nnowikiblock\n }}}\n}}}\n")
 
     # In inline nowiki, any trailing closing brace is included in the span
-    tc("<p>this is <tt>nowiki}</tt></p>", "this is {{{nowiki}}}}")
-    tc("<p>this is <tt>nowiki}}</tt></p>", "this is {{{nowiki}}}}}")
-    tc("<p>this is <tt>nowiki}}}</tt></p>", "this is {{{nowiki}}}}}}")
-    tc("<p>this is <tt>nowiki}}}}</tt></p>", "this is {{{nowiki}}}}}}}")
+    tc("<p>this is <tt>nowiki}</tt></p>\n", "this is {{{nowiki}}}}")
+    tc("<p>this is <tt>nowiki}}</tt></p>\n", "this is {{{nowiki}}}}}")
+    tc("<p>this is <tt>nowiki}}}</tt></p>\n", "this is {{{nowiki}}}}}}")
+    tc("<p>this is <tt>nowiki}}}}</tt></p>\n", "this is {{{nowiki}}}}}}}")
   end
 
   it 'should escape html' do
     # Special HTML chars should be escaped
-    tc("<p>&lt;b&gt;not bold&lt;/b&gt;</p>", "<b>not bold</b>")
+    tc("<p>&lt;b&gt;not bold&lt;/b&gt;</p>\n", "<b>not bold</b>")
 
     # Image tags should be escape
-    tc("<p><img src='image.jpg'/></p>", "[[Image(image.jpg)]]")
-    tc("<p><img src='image.jpg' alt='&quot;tag&quot;'/></p>", "[[Image(image.jpg|\"tag\")]]")
+    tc("<p><img src='image.jpg'/></p>\n", "[[Image(image.jpg)]]")
+    tc("<p><img src='image.jpg' alt='&quot;tag&quot;'/></p>\n", "[[Image(image.jpg|\"tag\")]]")
 
     # Malicious links should not be converted.
-    tc("<p><a href=\"javascript%3Aalert%28%22Boo%21%22%29\">Click</a></p>", "[[javascript:alert(\"Boo!\")|Click]]")
+    tc("<p><a href=\"javascript%3Aalert%28%22Boo%21%22%29\">Click</a></p>\n", "[[javascript:alert(\"Boo!\")|Click]]")
   end
 
   it 'should support character escape' do
-    tc "<p>** Not Bold **</p>", "!** Not Bold !**"
-    tc "<p>// Not Italic //</p>", "!// Not Italic !//"
-    tc "<p>* Not Bullet</p>", "!* Not Bullet"
+    tc "<p>** Not Bold **</p>\n", "!** Not Bold !**"
+    tc "<p>// Not Italic //</p>\n", "!// Not Italic !//"
+    tc "<p>* Not Bullet</p>\n", "!* Not Bullet"
     # Following char is not a blank (space or line feed)
-    tc "<p>Hello ~ world</p>", "Hello ~ world\n"
-    tc "<p>Hello ! world</p>", "Hello ! world\n"
-    tc "<p>Hello ! world</p>", "Hello ! world\n"
-    tc "<p>Hello ! world</p>", "Hello !\nworld\n"
+    tc "<p>Hello ~ world</p>\n", "Hello ~ world\n"
+    tc "<p>Hello ! world</p>\n", "Hello ! world\n"
+    tc "<p>Hello ! world</p>\n", "Hello ! world\n"
+    tc "<p>Hello ! world</p>\n", "Hello !\nworld\n"
     # Not escaping inside URLs 
-    tc "<p><a href=\"http://example.org/~user/\">http://example.org/~user/</a></p>", "http://example.org/~user/"
+    tc "<p><a href=\"http://example.org/~user/\">http://example.org/~user/</a></p>\n", "http://example.org/~user/"
 
     # Escaping links
-    tc "<p>http://www.example.org/</p>", "~http://www.example.org/"
+    tc "<p>http://www.example.org/</p>\n", "~http://www.example.org/"
   end
 
   it 'should parse horizontal rule' do
@@ -467,12 +467,12 @@ describe TracWiki::Parser do
     tc "<hr/>", " \t ---- \t "
 
     # Nothing else than hyphens and whitespace is "allowed"
-    tc "<p>foo ----</p>", "foo ----\n"
-    tc "<p>---- foo</p>", "---- foo\n"
+    tc "<p>foo ----</p>\n", "foo ----\n"
+    tc "<p>---- foo</p>\n", "---- foo\n"
 
     # [...] no whitespace is allowed between them
-    tc "<p>-- -- </p>", "-- -- "
-    tc "<p>-- -- </p>", "--\t-- "
+    tc "<p>-- -- </p>\n", "-- -- "
+    tc "<p>-- -- </p>\n", "--\t-- "
   end
 
   it 'should parse table' do
@@ -517,8 +517,8 @@ describe TracWiki::Parser do
     tc("<table><tr><td>table</td></tr></table><h1>heading</h1>", "||table||\n=heading=\n")
     tc("<table><tr><td>table</td></tr></table><h1>heading</h1>", "||table||\n\n=heading=\n")
     # table followed by paragraph
-    tc("<table><tr><td>table</td></tr></table><p>par</p>", "||table||\npar\n")
-    tc("<table><tr><td>table</td></tr></table><p>par</p>", "||table||\n\npar\n")
+    tc("<table><tr><td>table</td></tr></table><p>par</p>\n", "||table||\npar\n")
+    tc("<table><tr><td>table</td></tr></table><p>par</p>\n", "||table||\n\npar\n")
     # table followed by unordered list
     tc("<table><tr><td>table</td></tr></table><ul><li>item</li></ul>", "||table||\n* item\n")
     tc("<table><tr><td>table</td></tr></table><ul><li>item</li></ul>", "||table||\n\n* item\n")
@@ -541,8 +541,8 @@ describe TracWiki::Parser do
     tc("<h1>heading1</h1><h1>heading2</h1>", "=heading1=\n=heading2\n")
     tc("<h1>heading1</h1><h1>heading2</h1>", "=heading1=\n\n=heading2\n")
     # paragraph
-    tc("<h1>heading</h1><p>par</p>", "=heading=\npar\n")
-    tc("<h1>heading</h1><p>par</p>", "=heading=\n\npar\n")
+    tc("<h1>heading</h1><p>par</p>\n", "=heading=\npar\n")
+    tc("<h1>heading</h1><p>par</p>\n", "=heading=\n\npar\n")
     # unordered list
     tc("<h1>heading</h1><ul><li>item</li></ul>", "=heading=\n* item\n")
     tc("<h1>heading</h1><ul><li>item</li></ul>", "=heading=\n\n* item\n")
@@ -562,26 +562,26 @@ describe TracWiki::Parser do
 
   it 'should parse following paragraph' do
     # heading
-    tc("<p>par</p><h1>heading</h1>", "par\n=heading=")
-    tc("<p>par</p><h1>heading</h1>", "par\n\n=heading=")
+    tc("<p>par</p>\n<h1>heading</h1>", "par\n=heading=")
+    tc("<p>par</p>\n<h1>heading</h1>", "par\n\n=heading=")
     # paragraph
-    tc("<p>par par</p>", "par\npar\n")
-    tc("<p>par</p><p>par</p>", "par\n\npar\n")
+    tc("<p>par par</p>\n", "par\npar\n")
+    tc("<p>par</p>\n<p>par</p>\n", "par\n\npar\n")
     # unordered
-    tc("<p>par</p><ul><li>item</li></ul>", "par\n* item")
-    tc("<p>par</p><ul><li>item</li></ul>", "par\n\n* item")
+    tc("<p>par</p>\n<ul><li>item</li></ul>", "par\n* item")
+    tc("<p>par</p>\n<ul><li>item</li></ul>", "par\n\n* item")
     # ordered
-    tc("<p>par</p><ol><li>item</li></ol>", "par\n1. item\n")
-    tc("<p>par</p><ol><li>item</li></ol>", "par\n\n1. item\n")
+    tc("<p>par</p>\n<ol><li>item</li></ol>", "par\n1. item\n")
+    tc("<p>par</p>\n<ol><li>item</li></ol>", "par\n\n1. item\n")
     # horizontal
-    tc("<p>par</p><hr/>", "par\n----\n")
-    tc("<p>par</p><hr/>", "par\n\n----\n")
+    tc("<p>par</p>\n<hr/>", "par\n----\n")
+    tc("<p>par</p>\n<hr/>", "par\n\n----\n")
     # nowiki
-    tc("<p>par</p><pre>nowiki</pre>", "par\n{{{\nnowiki\n}}}\n")
-    tc("<p>par</p><pre>nowiki</pre>", "par\n\n{{{\nnowiki\n}}}\n")
+    tc("<p>par</p>\n<pre>nowiki</pre>", "par\n{{{\nnowiki\n}}}\n")
+    tc("<p>par</p>\n<pre>nowiki</pre>", "par\n\n{{{\nnowiki\n}}}\n")
     # table
-    tc("<p>par</p><table><tr><td>table</td></tr></table>", "par\n||table||\n")
-    tc("<p>par</p><table><tr><td>table</td></tr></table>", "par\n\n||table||\n")
+    tc("<p>par</p>\n<table><tr><td>table</td></tr></table>", "par\n||table||\n")
+    tc("<p>par</p>\n<table><tr><td>table</td></tr></table>", "par\n\n||table||\n")
   end
 
   it 'should parse following unordered list' do
@@ -590,7 +590,7 @@ describe TracWiki::Parser do
     tc("<ul><li>item</li></ul><h1>heading</h1>", "* item\n\n=heading=")
     # paragraph
     tc("<ul><li>item par</li></ul>", "* item\npar\n") # items may span multiple lines
-    tc("<ul><li>item</li></ul><p>par</p>", "* item\n\npar\n")
+    tc("<ul><li>item</li></ul><p>par</p>\n", "* item\n\npar\n")
     # unordered
     tc("<ul><li>item</li><li>item</li></ul>", "* item\n* item\n")
     tc("<ul><li>item</li></ul><ul><li>item</li></ul>", "* item\n\n* item\n")
@@ -614,7 +614,7 @@ describe TracWiki::Parser do
     tc("<ol><li>item</li></ol><h1>heading</h1>", "1. item\n\n=heading=")
     # paragraph
     tc("<ol><li>item par</li></ol>", "1. item\npar\n") # items may span multiple lines
-    tc("<ol><li>item</li></ol><p>par</p>", "1. item\n\npar\n")
+    tc("<ol><li>item</li></ol><p>par</p>\n", "1. item\n\npar\n")
     # unordered
     tc("<ol><li>item</li></ol><ul><li>item</li></ul>", "1. item\n* item\n")
     tc("<ol><li>item</li></ol><ul><li>item</li></ul>", "1. item\n\n*   item\n")
@@ -637,8 +637,8 @@ describe TracWiki::Parser do
     tc("<hr/><h1>heading</h1>", "----\n=heading=")
     tc("<hr/><h1>heading</h1>", "----\n\n=heading=")
     # paragraph
-    tc("<hr/><p>par</p>", "----\npar\n")
-    tc("<hr/><p>par</p>", "----\n\npar\n")
+    tc("<hr/><p>par</p>\n", "----\npar\n")
+    tc("<hr/><p>par</p>\n", "----\n\npar\n")
     # unordered
     tc("<hr/><ul><li>item</li></ul>", "----\n* item")
     tc("<hr/><ul><li>item</li></ul>", "----\n* item")
@@ -664,8 +664,8 @@ describe TracWiki::Parser do
     tc("<pre>nowiki</pre><h1>heading</h1>", "{{{\nnowiki\n}}}\n=heading=")
     tc("<pre>nowiki</pre><h1>heading</h1>", "{{{\nnowiki\n}}}\n\n=heading=")
     # paragraph
-    tc("<pre>nowiki</pre><p>par</p>", "{{{\nnowiki\n}}}\npar")
-    tc("<pre>nowiki</pre><p>par</p>", "{{{\nnowiki\n}}}\n\npar")
+    tc("<pre>nowiki</pre><p>par</p>\n", "{{{\nnowiki\n}}}\npar")
+    tc("<pre>nowiki</pre><p>par</p>\n", "{{{\nnowiki\n}}}\n\npar")
     # unordered
     tc("<pre>nowiki</pre><ul><li>item</li></ul>", "{{{\nnowiki\n}}}\n* item\n")
     tc("<pre>nowiki</pre><ul><li>item</li></ul>", "{{{\nnowiki\n}}}\n\n* item\n")
@@ -684,38 +684,38 @@ describe TracWiki::Parser do
   end
 
   it 'should parse image' do
-    tc("<p><img src='image.jpg'/></p>", "[[Image(image.jpg)]]")
-    tc("<p><img src='image.jpg' alt='tag'/></p>", "[[Image(image.jpg|tag)]]")
-    tc("<p><img src='http://example.org/image.jpg'/></p>", "[[Image(http://example.org/image.jpg)]]")
+    tc("<p><img src='image.jpg'/></p>\n", "[[Image(image.jpg)]]")
+    tc("<p><img src='image.jpg' alt='tag'/></p>\n", "[[Image(image.jpg|tag)]]")
+    tc("<p><img src='http://example.org/image.jpg'/></p>\n", "[[Image(http://example.org/image.jpg)]]")
   end
 
   it 'should parse bold combo' do
-    tc("<p><strong>bold and</strong></p><table><tr><td>table</td></tr></table><p>end<strong></strong></p>",
+    tc("<p><strong>bold and</strong></p>\n<table><tr><td>table</td></tr></table><p>end<strong></strong></p>\n",
        "**bold and\n||table||\nend**")
   end
 
   it 'should support extensions' do
-    tce("<p>This is <u>underlined</u></p>",
+    tce("<p>This is <u>underlined</u></p>\n",
         "This is __underlined__")
 
-    tce("<p>This is <del>deleted</del></p>",
+    tce("<p>This is <del>deleted</del></p>\n",
         "This is ~~deleted~~")
 
-    tce("<p>This is <sup>super</sup></p>",
+    tce("<p>This is <sup>super</sup></p>\n",
         "This is ^super^")
 
-    tce("<p>This is <sub>sub</sub></p>",
+    tce("<p>This is <sub>sub</sub></p>\n",
         "This is ,,sub,,")
 
-    tce("<p>&#174;</p>", "(R)")
-    tce("<p>&#174;</p>", "(r)")
-    tce("<p>&#169;</p>", "(C)")
-    tce("<p>&#169;</p>", "(c)")
+    tce("<p>&#174;</p>\n", "(R)")
+    tce("<p>&#174;</p>\n", "(r)")
+    tce("<p>&#169;</p>\n", "(C)")
+    tce("<p>&#169;</p>\n", "(c)")
   end
 
   it 'should support no_escape' do
-    tc("<p><a href=\"a%2Fb%2Fc\">a/b/c</a></p>", "[[a/b/c]]")
-    tc("<p><a href=\"a/b/c\">a/b/c</a></p>", "[[a/b/c]]", :no_escape => true)
+    tc("<p><a href=\"a%2Fb%2Fc\">a/b/c</a></p>\n", "[[a/b/c]]")
+    tc("<p><a href=\"a/b/c\">a/b/c</a></p>\n", "[[a/b/c]]", :no_escape => true)
   end
 end
 # vim: tw=0
