@@ -1,0 +1,40 @@
+= TracWiki =
+
+TracWiki is a TracWiki-to-HTML converter for Trac wiki, http://trac.edgewall.org/wiki/WikiFormatting.
+
+Project page on github:
+
+* http://github.com/vitstradal/trac-wiki
+
+== INSTALLATION ==
+
+{{{
+gem install trac-wiki
+}}}
+
+== SYNOPSIS ==
+
+{{{
+require 'trac_wiki'
+html = TracWiki.render('== TracWik text ==')
+}}}
+
+== BUGS ==
+
+If you found a bug, please report it at the TracWiki project's tracker
+on GitHub:
+
+http://github.com/vitstradal/trac-wiki/issues
+
+== AUTHORS ==
+
+* Vitas Stradal
+Based on Creole:
+
+* Lars Christensen (larsch)
+* Daniel Mendler (minad)
+
+== LICENSE ==
+
+
+GPL
