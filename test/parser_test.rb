@@ -457,6 +457,17 @@ describe TracWiki::Parser do
   end
 
   it 'should parse table' do
+    tc "<table><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||World!||"
+    tc "<table><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||\\\n||World!||"
+    tc "<table><tr><td>He</td><td>llo</td><td>World!</td></tr></table>", "||He||llo||\\\n||World!||"
+    tc "<table><tr><td>Hello</td><td colspan='2'>World!</td></tr></table>", "||Hello||||World!||"
+    tc "<table><tr><td>Hello</td><td colspan='2'>kuk</td><td>World!</td></tr></table>", "||Hello||||kuk||\\\n||World!||"
+    tc "<table><tr><td>1</td><td>2</td><td>3</td></tr><tr><td colspan='2'>1-2</td><td>3</td></tr><tr><td>1</td><td colspan='2'>2-3</td></tr><tr><td colspan='3'>1-2-3</td></tr></table>", "|| 1 || 2 || 3 ||\n|||| 1-2 || 3 ||\n|| 1 |||| 2-3 ||\n|||||| 1-2-3 ||\n"
+
+    tc "<table><tr><td>table</td><td style='text-align:center'>center</td></tr></table>", "||table||   center  ||"
+    tc "<table><tr><td>table</td><td style='text-align:right'>right</td></tr></table>", "||table||   right||"
+    tc "<table><tr><td>table</td><td style='text-align:center'>center</td><td style='text-align:right'>right</td></tr></table>", "||table||  center  ||   right||"
+
     tc "<table><tr><td>Hello, World!</td></tr></table>", "||Hello, World!||"
     tc "<table><tr><td style='text-align:right'>Hello, Right World!</td></tr></table>", "|| Hello, Right World!||"
     tc "<table><tr><th style='text-align:right'>Hello, Right World!</th></tr></table>", "||= Hello, Right World!=||"

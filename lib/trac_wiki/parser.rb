@@ -319,28 +319,42 @@ module TracWiki
     end
 
     def parse_table_row(str)
-      @out << '<tr>'
-      #str.scan(/\s*\|\|(=)?\s*((\[\[.*?\]\]|\{\{.*?\}\}|[^|~]|~.)*)(?=\||$)/) do
-      str.scan(/\s*\|\|(=)?(\s*)(.*?)(?==?\|\||$)/) do
-        if !$3.empty? || !$'.empty?
-          tag = $1 ? 'th' : 'td'
-          le = $2.size
-          txt = $3
-          style =''
-          if  txt =~ /\S(\s*)$/
-                ri = $1.size
-#                style = " style='text-align:left'"  if le == 0
-                style = " style='text-align:right'"  if ri == 0 && le >= 1
-                style = " style='text-align:center'" if le >= 2 && ri >= 2
-                #print "le#{le} ri#{ri} st:#{style}\n"
-          end
-          @out << ('<' + tag + style + '>' )
-          parse_inline(txt.strip) if txt
-          end_tag while @stack.last != 'table'
-          @out << ('</' + tag + '>')
+      start_tag('tr') if !@stack.include?('tr')
+      colspan = 1
+      print_tr = true
+      last_tail  = ''
+      last_txt  = ''
+      str.scan(/(=?)(\s*)(.*?)\1?($ | \|\|\\\s*$ | \|\| )/x) do
+        tdth = $1.empty? ? 'td' : 'th'
+        le, txt, tail  = $2.size, $3, $4
+
+        # do not end row, continue on next line
+        print_tr = false if tail =~ /^\|\|\\/
+
+        if txt.empty? && le == 0
+          colspan += 1
+          next
         end
+
+        style = ''
+        if  txt =~ /\S(\s*)$/
+              ri = $1.size
+              ri += 100 if tail.empty? # do not right when last || omnited
+              style = " style='text-align:right'"  if ri == 0 && le >= 1
+              style = " style='text-align:center'" if le >= 2 && ri >= 2
+              #print "le#{le} ri#{ri} st:#{style}\n"
+        end
+
+        colspan_txt  =  colspan > 1 ? " colspan='#{colspan}'" : ''
+        start_tag(tdth, style + colspan_txt);
+        colspan = 1
+
+        parse_inline(txt.strip) if txt
+        end_tag while @stack.last != 'tr'
       end
-      @out << '</tr>'
+      if print_tr
+        end_tag
+      end
     end
 
     def make_nowikiblock(input)
@@ -412,12 +426,12 @@ module TracWiki
           @out << make_headline(level, $2)
 
         # table row
-        when /\A[ \t]*\|\|.*$(\r?\n)?/
+        when /\A[ \t]*\|\|(.*)$(\r?\n)?/
           if !@stack.include?('table')
             end_paragraph
             start_tag('table')
           end
-          parse_table_row($&)
+          parse_table_row($1)
 
         # empty line
         when /\A\s*$(\r?\n)?/
