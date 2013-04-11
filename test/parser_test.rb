@@ -1,4 +1,4 @@
-require 'trac_wiki'
+require 'trac-wiki'
 
 class Bacon::Context
   def tc(html, wiki, options = {})
@@ -433,8 +433,8 @@ describe TracWiki::Parser do
     tc("<p>&lt;b&gt;not bold&lt;/b&gt;</p>\n", "<b>not bold</b>")
 
     # Image tags should be escape
-    tc("<p><img src='image.jpg'/></p>\n", "[[Image(image.jpg)]]")
-    tc("<p><img src='image.jpg' alt='&quot;tag&quot;'/></p>\n", "[[Image(image.jpg|\"tag\")]]")
+    tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]")
+    tc("<p><img src=\"image.jpg\" alt=\"&quot;tag&quot;\"/></p>\n", "[[Image(image.jpg|\"tag\")]]")
 
     # Malicious links should not be converted.
     tc("<p><a href=\"javascript%3Aalert%28%22Boo%21%22%29\">Click</a></p>\n", "[[javascript:alert(\"Boo!\")|Click]]")
@@ -509,7 +509,7 @@ describe TracWiki::Parser do
     # Equal sign after pipe make a header
     tc "<table><tr><th>Header</th></tr></table>", "||=Header=||"
 
-    tc "<table><tr><td>c1</td><td><a href=\"Link\">Link text</a></td><td><img src='Image'/></td></tr></table>", "||c1||[[Link|Link text]]||[[Image(Image)]]||"
+    tc "<table><tr><td>c1</td><td><a href=\"Link\">Link text</a></td><td><img src=\"Image\"/></td></tr></table>", "||c1||[[Link|Link text]]||[[Image(Image)]]||"
   end
 
   it 'should parse following table' do
@@ -684,9 +684,9 @@ describe TracWiki::Parser do
   end
 
   it 'should parse image' do
-    tc("<p><img src='image.jpg'/></p>\n", "[[Image(image.jpg)]]")
-    tc("<p><img src='image.jpg' alt='tag'/></p>\n", "[[Image(image.jpg|tag)]]")
-    tc("<p><img src='http://example.org/image.jpg'/></p>\n", "[[Image(http://example.org/image.jpg)]]")
+    tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]")
+    tc("<p><img src=\"image.jpg\" alt=\"tag\"/></p>\n", "[[Image(image.jpg|tag)]]")
+    tc("<p><img src=\"http://example.org/image.jpg\"/></p>\n", "[[Image(http://example.org/image.jpg)]]")
   end
 
   it 'should parse bold combo' do

@@ -15,7 +15,7 @@ gem install trac-wiki
 == SYNOPSIS ==
 
 {{{
-require 'trac_wiki'
+require 'trac-wiki'
 html = TracWiki.render('== TracWik text ==')
 }}}
 

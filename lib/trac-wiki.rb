@@ -1,5 +1,5 @@
-require 'trac_wiki/parser'
-require 'trac_wiki/version'
+require 'trac-wiki/parser'
+require 'trac-wiki/version'
 
 module TracWiki
   # Convert the argument in Trac format to HTML and return the

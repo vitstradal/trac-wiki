@@ -204,9 +204,9 @@ module TracWiki
     # to put divs around the imgs.
     def make_image(uri, alt='')
       if alt
-        "<img src='" << escape_html(uri) << "' alt='" << escape_html(alt) << "'/>"
+        "<img src=\"" << escape_html(uri) << "\" alt=\"" << escape_html(alt) << "\"/>"
       else
-        "<img src='" << escape_html(uri) << "'/>"
+        "<img src=\"" << escape_html(uri) << "\"/>"
       end
     end
 

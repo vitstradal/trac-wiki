@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/lib/trac_wiki/version'
+require File.dirname(__FILE__) + '/lib/trac-wiki/version'
 require 'date'
 
 Gem::Specification.new do |s|
