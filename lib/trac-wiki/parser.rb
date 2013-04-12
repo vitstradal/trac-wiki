@@ -227,7 +227,7 @@ module TracWiki
       until str.empty?
         case str
         # raw url
-        when /\A(\~)?((https?|ftps?):\/\/\S+?)(?=([\,.?!:;"'\)]+)?(\s|$))/
+        when /\A(!)?((https?|ftps?):\/\/\S+?)(?=([\]\,.?!:;"'\)]+)?(\s|$))/
           str = $'
           if $1
             @out << escape_html($2)
@@ -243,7 +243,12 @@ module TracWiki
           str = $'
           @out << make_image($1, $3)
         # [[link]]
-        when /\A\[\[\s*([^|]*?)\s*(\|\s*(.*?))?\s*\]\]/m
+        #          [     link1          | text2          ]
+        when /\A \[ \s* ([^\[|]*?) \s* (\|\s*(.*?))? \s* \] /mx
+          str = $'
+          link, content, whole= $1, $3, $&
+          make_link(link, content, whole)
+        when /\A \[\[ \s* ([^|]*?) \s* (\|\s*(.*?))? \s* \]\] /mx
           str = $'
           link, content, whole= $1, $3, $&
           make_link(link, content, whole)
@@ -257,7 +262,7 @@ module TracWiki
     def make_link(link, content, whole)
       uri = make_explicit_link(link)
       # specail "link" [[BR]]:
-      if link =~ /br/i
+      if link =~ /^br$/i
         @out << '<br/>'
         return
       end

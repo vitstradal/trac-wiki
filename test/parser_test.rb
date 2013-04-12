@@ -46,6 +46,11 @@ describe TracWiki::Parser do
     tc "<p>This <strong>is bold</strong></p>\n", "This **is\nbold**"
   end
 
+  it 'should be toc' do
+    tc "<p>{{toc}}</p>\n", "{{toc}}"
+    tc "<h2>ahoj</h2><p>{{toc}}</p>\n<h2>ahoj</h2>", "==ahoj==\n{{toc}}\n\n==ahoj==\n"
+  end
+
   it 'should parse bolditalic' do
     tc "<p>This is <strong><em>bolditallic</em></strong>.</p>\n", "This is '''''bolditallic'''''."
     tc "<p>This is <strong> <em>bolditallic</em> </strong>.</p>\n", "This is ''' ''bolditallic'' '''."
@@ -388,6 +393,9 @@ describe TracWiki::Parser do
     tc("<p>How about <em>a link, like <a href=\"http://example.org\">http://example.org</a>, in italic</em> text?</p>\n",
        "How about ''a link, like http://example.org, in italic'' text?")
 
+    tc("<p>How about <em>a link, like <a href=\"http://example.org\">http://example.org</a>, in italic</em> text?</p>\n",
+       "How about ''a link, like [http://example.org], in italic'' text?")
+
     # Another test 
     tc("<p>Formatted fruits, for example:<em>apples</em>, oranges, <strong>pears</strong> ...</p>\n",
        "Formatted fruits, for example:''apples'', oranges, **pears** ...")
@@ -451,9 +459,12 @@ describe TracWiki::Parser do
     tc "<p>Hello ! world</p>\n", "Hello !\nworld\n"
     # Not escaping inside URLs 
     tc "<p><a href=\"http://example.org/~user/\">http://example.org/~user/</a></p>\n", "http://example.org/~user/"
+    tc "<p><a href=\"http://example.org/~user/\">http://example.org/~user/</a></p>\n", "[http://example.org/~user/]"
 
     # Escaping links
-    tc "<p>http://www.example.org/</p>\n", "~http://www.example.org/"
+    tc "<p>http://www.example.org/</p>\n", "!http://www.example.org/"
+    tc "<p>[http://www.example.org/]</p>\n", "![!http://www.example.org/]"
+    tc "<p>[<a href=\"http://www.example.org/\">http://www.example.org/</a>]</p>\n", "![http://www.example.org/]"
   end
 
   it 'should parse horizontal rule' do
@@ -510,6 +521,7 @@ describe TracWiki::Parser do
     tc "<table><tr><th>Header</th></tr></table>", "||=Header=||"
 
     tc "<table><tr><td>c1</td><td><a href=\"Link\">Link text</a></td><td><img src=\"Image\"/></td></tr></table>", "||c1||[[Link|Link text]]||[[Image(Image)]]||"
+    tc "<table><tr><td>c1</td><td><a href=\"Link\">Link text</a></td><td><img src=\"Image\"/></td></tr></table>", "||c1||[Link|Link text]||[[Image(Image)]]||"
   end
 
   it 'should parse following table' do
@@ -715,6 +727,7 @@ describe TracWiki::Parser do
 
   it 'should support no_escape' do
     tc("<p><a href=\"a%2Fb%2Fc\">a/b/c</a></p>\n", "[[a/b/c]]")
+    tc("<p><a href=\"a%2Fb%2Fc\">a/b/c</a></p>\n", "[a/b/c]")
     tc("<p><a href=\"a/b/c\">a/b/c</a></p>\n", "[[a/b/c]]", :no_escape => true)
   end
 end
