@@ -491,6 +491,7 @@ module TracWiki
         # ordinary line
         when /\A(\s*)(\S+.*?)$(\r?\n)?/
           spc_size, text =  $1.size, $2
+          text.rstrip!
 
           if @stack.include?('li') ||@stack.include?('dl')
 

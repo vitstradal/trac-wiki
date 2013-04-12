@@ -49,6 +49,7 @@ describe TracWiki::Parser do
   it 'should be toc' do
     tc "<p>{{toc}}</p>\n", "{{toc}}"
     tc "<h2>ahoj</h2><p>{{toc}}</p>\n<h2>ahoj</h2>", "==ahoj==\n{{toc}}\n\n==ahoj==\n"
+    tc "<h2>ahoj</h2><p>{{toc}}</p>\n<h2>ahoj</h2>", "==ahoj==\r\n{{toc}}\r\n\r\n==ahoj==\r\n"
   end
 
   it 'should parse bolditalic' do
@@ -482,8 +483,8 @@ describe TracWiki::Parser do
     tc "<p>---- foo</p>\n", "---- foo\n"
 
     # [...] no whitespace is allowed between them
-    tc "<p>-- -- </p>\n", "-- -- "
-    tc "<p>-- -- </p>\n", "--\t-- "
+    tc "<p>-- --</p>\n", "-- -- "
+    tc "<p>-- --</p>\n", "--\t-- "
   end
 
   it 'should parse table' do
