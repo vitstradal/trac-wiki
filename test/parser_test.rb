@@ -468,7 +468,9 @@ describe TracWiki::Parser do
     # Not escaping inside URLs 
     tc "<p><a href=\"http://example.org/~user/\">http://example.org/~user/</a></p>\n", "http://example.org/~user/"
     tc "<p><a href=\"http://example.org/~user/\">http://example.org/~user/</a></p>\n", "[http://example.org/~user/]"
-    tc "<p>[[http://example.org/~user/]]</p>\n", "[http://example.org/~user/]", :no_link=>true
+    tc "<p><a href=\"http://example.org/~user/\">http://example.org/~user/</a></p>\n", "[http://example.org/~user/]", :no_link=>true
+    tc "<p><a href=\"http://example.org/~user/\">http://example.org/~user/</a></p>\n", "[[http://example.org/~user/]]", :no_link=>true
+    tc "<p><a href=\"http://example.org/~user/\">http://example.org/~user/</a></p>\n", "[[http://example.org/~user/]]"
 
     # Escaping links
     tc "<p>http://www.example.org/</p>\n", "!http://www.example.org/"

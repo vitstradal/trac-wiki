@@ -277,11 +277,12 @@ module TracWiki
       end
 
       if no_link?
-        @out << escape_html(whole)
-        return
+        if uri !~ /^(ftp|https?):/
+          @out << escape_html(whole)
+          return
+        end
       end
 
-      make_explicit_link(link)
       @out << '<a href="' << escape_html(uri) << '">'
       if content
         until content.empty?
