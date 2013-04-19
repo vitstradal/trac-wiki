@@ -252,7 +252,7 @@ module TracWiki
         when /\A \[ \s* ([^\[|]*?) \s* (\|\s*(.*?))? \s* \] /mx
           str = $'
           link, content, whole= $1, $3, $&
-          make_link(link, content, whole)
+          make_link(link, content, "[#{whole}]")
         when /\A \[\[ \s* ([^|]*?) \s* (\|\s*(.*?))? \s* \]\] /mx
           str = $'
           link, content, whole= $1, $3, $&
