@@ -11,6 +11,11 @@ class Bacon::Context
 end
 
 describe TracWiki::Parser do
+  it 'should not parse linkd' do
+    tc "<p>[[ahoj]]</p>\n", "[[ahoj]]", :no_link => true
+    tc "<p>[[ahoj|bhoj]]</p>\n", "[[ahoj|bhoj]]", :no_link => true
+    tc "<ul><li>[[ahoj|bhoj]]</li></ul>", "* [[ahoj|bhoj]]", :no_link => true
+  end
   it 'should parse bold' do
     # Bold can be used inside paragraphs
     tc "<p>This <strong>is</strong> bold</p>\n", "This **is** bold"
@@ -443,7 +448,9 @@ describe TracWiki::Parser do
 
     # Image tags should be escape
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]")
+    tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]", :no_link=>true)
     tc("<p><img src=\"image.jpg\" alt=\"&quot;tag&quot;\"/></p>\n", "[[Image(image.jpg|\"tag\")]]")
+    tc("<p><img src=\"image.jpg\" alt=\"&quot;tag&quot;\"/></p>\n", "[[Image(image.jpg|\"tag\")]]", :no_link=>true)
 
     # Malicious links should not be converted.
     tc("<p><a href=\"javascript%3Aalert%28%22Boo%21%22%29\">Click</a></p>\n", "[[javascript:alert(\"Boo!\")|Click]]")

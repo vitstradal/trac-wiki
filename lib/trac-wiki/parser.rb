@@ -53,6 +53,11 @@ module TracWiki
     attr_writer :no_escape
     def no_escape?; @no_escape; end
 
+    # Disable url escaping for local links
+    # [[whatwerver]] stays [[whatwerver]]
+    attr_writer :no_link
+    def no_link?; @no_link; end
+
     # Create a new Parser instance.
     def initialize(text, options = {})
       @allowed_schemes = %w(http https ftp ftps)
@@ -260,13 +265,18 @@ module TracWiki
     end
 
     def make_link(link, content, whole)
-      uri = make_explicit_link(link)
       # specail "link" [[BR]]:
       if link =~ /^br$/i
         @out << '<br/>'
         return
       end
+      uri = make_explicit_link(link)
       if not uri
+        @out << escape_html(whole)
+        return
+      end
+
+      if no_link?
         @out << escape_html(whole)
         return
       end
