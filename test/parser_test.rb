@@ -449,8 +449,8 @@ describe TracWiki::Parser do
     # Image tags should be escape
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]")
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]", :no_link=>true)
-    tc("<p><img src=\"image.jpg\" alt=\"a&quot;tag&quot;\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]")
-    tc("<p><img src=\"image.jpg\" alt=\"a&quot;tag&quot;\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]", :no_link=>true)
+    tc("<p><img src=\"image.jpg\" alt=\"a%22tag%22\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]")
+    tc("<p><img src=\"image.jpg\" alt=\"a%22tag%22\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]", :no_link=>true)
 
     # Malicious links should not be converted.
     tc("<p><a href=\"javascript%3Aalert%28%22Boo%21%22%29\">Click</a></p>\n", "[[javascript:alert(\"Boo!\")|Click]]")
@@ -708,6 +708,7 @@ describe TracWiki::Parser do
 
   it 'should parse image' do
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]")
+    tc("<p><img src=\"javascript%3Aimage.jpg\" alt=\"tag\"/></p>\n", "[[Image(javascript:image.jpg,alt=tag)]]")
     tc("<p><img src=\"image.jpg\" alt=\"tag\"/></p>\n", "[[Image(image.jpg,alt=tag)]]")
     tc("<p><img src=\"image.jpg\" width=\"120px\"/></p>\n", "[[Image(image.jpg, 120px )]]")
     tc("<p><img src=\"image.jpg\" width=\"120px\"/></p>\n", "[[Image(image.jpg, \t120px   )]]")
@@ -720,7 +721,7 @@ describe TracWiki::Parser do
     tc("<p><img src=\"image.jpg\" valign=\"middle\"/></p>\n", "[[Image(image.jpg, middle)]]")
     tc("<p><img src=\"image.jpg\" title=\"houhouhou\"/></p>\n", "[[Image(image.jpg, title=houhouhou)]]")
     tc("<p><img src=\"image.jpg\" width=\"120px\"/></p>\n", "[[Image(image.jpg,width=120px)]]")
-    tc("<p><img src=\"image.jpg\" width=\"120%\"/></p>\n", "[[Image(image.jpg, width=120%)]]")
+    tc("<p><img src=\"image.jpg\" width=\"120%25\"/></p>\n", "[[Image(image.jpg, width=120%)]]")
     tc("<p><img src=\"image.jpg\" style=\"margin:5\"/></p>\n", "[[Image(image.jpg,margin=5)]]")
     tc("<p><img src=\"http://example.org/image.jpg\"/></p>\n", "[[Image(http://example.org/image.jpg)]]")
   end
