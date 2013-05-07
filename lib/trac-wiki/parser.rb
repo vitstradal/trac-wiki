@@ -16,6 +16,7 @@ require 'uri'
 # ||=Table=||=Heading=||
 # || Table || Cells   ||
 # [[Image(image.png)]]
+# [[Image(image.png, options)]]
 #
 # The simplest interface is TracWiki.render. The default handling of
 # links allow explicit local links using the [[link]] syntax. External
@@ -207,12 +208,35 @@ module TracWiki
     # method can be overridden to generate custom
     # markup, for example to add html additional attributes or
     # to put divs around the imgs.
-    def make_image(uri, alt='')
-      if alt
-        "<img src=\"" << escape_html(uri) << "\" alt=\"" << escape_html(alt) << "\"/>"
-      else
-        "<img src=\"" << escape_html(uri) << "\"/>"
-      end
+    def make_image(uri, attrs='')
+      "<img src=\"#{escape_html(uri)}\"#{make_image_attrs(attrs)}/>"
+    end
+
+    def make_image_attrs(attrs)
+       return '' if ! attrs
+       a = {}
+       style = []
+       attrs.strip.split(/\s*,\s*/).each do |opt|
+         case opt
+           when /^\d+[^\d]*$/
+             a['width'] = opt
+           when /^(right|left|center)/i
+             a['align'] = opt
+           when  /^(top|bottom|middle)$/i
+             a['valign'] = opt
+           when  /^link=(.*)$/i
+             # pass
+           when  /^nolink$/i
+             # pass
+           when /^(align|valign|border|width|height|alt|title|longdesc|class|id|usemap)=(.*)$/i
+            a[$1]= escape_html($2)
+           when /^(margin|margin-(left|right|top|bottom))=(\d+)$/
+            style.push($1 + ":" + escape_html($3))
+         end
+       end
+       a['style'] = style.join(';') if ! style.empty?
+       return '' if a.empty?
+       return ' ' + a.map{|k,v| "#{k}=\"#{v}\"" }.sort.join(' ')
     end
 
     def make_headline(level, text)
@@ -244,7 +268,7 @@ module TracWiki
             end
           end
         # [[Image(pic.jpg|tag)]]
-        when /\A\[\[Image\(([^|].*?)(\|(.*?))?\)\]\]/   # image 
+        when /\A\[\[Image\(([^,]*?)(,(.*?))?\)\]\]/   # image 
           str = $'
           @out << make_image($1, $3)
         # [[link]]
