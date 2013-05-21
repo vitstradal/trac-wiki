@@ -256,6 +256,23 @@ describe TracWiki::Parser do
   it 'should parse definition list' do
     # FIXME: trailing space 
     tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python:: \n   definition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python::\ndefinition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python::\r\ndefinition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python::\r\n definition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python:: \r\n definition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python::   definition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python:: definition\n"
+    tc "<dl><dt>Monty::Python</dt><dd> definition</dd></dl>", "Monty::Python:: definition\n"
+    tc "<dl><dt>::Python</dt><dd> definition</dd></dl>", "::Python:: definition\n"
+  end
+  it 'should not parse definition list' do
+    # FIXME: trailing space 
+    tc "<p>Monty::Python::definition</p>\n", "Monty::Python::definition\n"
+    tc "<p>bla Monty::Python bla</p>\n", "bla Monty::Python bla\n"
+    tc "<p>bla Monty::Python</p>\n", "bla Monty::Python\n"
+    tc "<p>Monty::Python bla</p>\n", "Monty::Python bla\n"
+    tc "<p>::Python bla</p>\n", "::Python bla\n"
+    tc "<p>:: Python bla</p>\n", ":: Python bla\n"
   end
   it 'should parse unordered_lists' do
     # List items begin with a * at the beginning of a line.

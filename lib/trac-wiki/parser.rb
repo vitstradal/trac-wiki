@@ -502,7 +502,7 @@ module TracWiki
         # empty line
         when /\A\s*$(\r?\n)?/
           end_paragraph
-        when /\A([\w\s]*)::\s*/
+        when /\A([:\w\s]+)::(\s+|\r?\n)/
           term = $1
           start_tag('dl')
           start_tag('dt')
