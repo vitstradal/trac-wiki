@@ -43,11 +43,6 @@ module TracWiki
     # Examples: http https ftp ftps
     attr_accessor :allowed_schemes
 
-    # Non-standard wiki text extensions enabled?
-    # E.g. underlined, deleted text etc
-    attr_writer :extensions
-    def extensions?; @extensions; end
-
     # Disable url escaping for local links
     # Escaping: [[/Test]] --> %2FTest
     # No escaping: [[/Test]] --> Test
@@ -63,7 +58,7 @@ module TracWiki
     def initialize(text, options = {})
       @allowed_schemes = %w(http https ftp ftps)
       @text = text
-      @extensions = @no_escape = nil
+      @no_escape = nil
       options.each_pair {|k,v| send("#{k}=", v) }
     end
 
@@ -73,7 +68,7 @@ module TracWiki
     #
     # Example:
     #
-    # parser = CreoleParser.new("**Hello //World//**", :extensions => true)
+    # parser = Parser.new("**Hello //World//**")
     # parser.to_html
     # #=> "<p><strong>Hello <em>World</em></strong></p>"
     def to_html
@@ -356,10 +351,6 @@ module TracWiki
         toggle_tag 'sup', $&            # ^{}
       when /\A,,/
         toggle_tag 'sub', $&            # _{}
-      when /\A\(R\)/i
-        @out << '&#174;'                # (R)
-      when /\A\(C\)/i
-        @out << '&#169;'                # (C)
       when /\A!([^\s])/
         @out << escape_html($1)         # !neco
       when /./
