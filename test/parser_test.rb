@@ -4,10 +4,6 @@ class Bacon::Context
   def tc(html, wiki, options = {})
     TracWiki.render(wiki, options).should.equal html
   end
-
-  def tce(html, wiki)
-    tc(html, wiki, :extensions => true)
-  end
 end
 
 describe TracWiki::Parser do
@@ -748,23 +744,25 @@ describe TracWiki::Parser do
        "**bold and\n||table||\nend**")
   end
 
-  it 'should support extensions' do
-    tce("<p>This is <u>underlined</u></p>\n",
-        "This is __underlined__")
+  it 'should support font styles below' do
+    tc("<p>This is <u>underlined</u></p>\n",
+       "This is __underlined__")
 
-    tce("<p>This is <del>deleted</del></p>\n",
-        "This is ~~deleted~~")
+    tc("<p>This is <del>deleted</del></p>\n",
+       "This is ~~deleted~~")
 
-    tce("<p>This is <sup>super</sup></p>\n",
-        "This is ^super^")
+    tc("<p>This is <sup>super</sup></p>\n",
+       "This is ^super^")
 
-    tce("<p>This is <sub>sub</sub></p>\n",
-        "This is ,,sub,,")
+    tc("<p>This is <sub>sub</sub></p>\n",
+       "This is ,,sub,,")
+  end
 
-    tce("<p>&#174;</p>\n", "(R)")
-    tce("<p>&#174;</p>\n", "(r)")
-    tce("<p>&#169;</p>\n", "(C)")
-    tce("<p>&#169;</p>\n", "(c)")
+  it 'should not support signs' do
+    TracWiki.render("(R)").should.not.equal "<p>&#174;</p>\n"
+    TracWiki.render("(r)").should.not.equal "<p>&#174;</p>\n"
+    TracWiki.render("(C)").should.not.equal "<p>&#169;</p>\n"
+    TracWiki.render("(c)").should.not.equal "<p>&#169;</p>\n"
   end
 
   it 'should support no_escape' do
