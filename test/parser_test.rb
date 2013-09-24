@@ -128,6 +128,9 @@ describe TracWiki::Parser do
 
     tc "<p>ahoj</p>\n$$e^{i\\pi}$$\n<p>nazdar</p>\n", "ahoj\n$$e^{i\\pi}$$\nnazdar", math: true
     tc "<p>ahoj $$e<sup>{i\\pi}$$ nazdar</sup></p>\n", "ahoj\n$$e^{i\\pi}$$\nnazdar", math: false
+
+    tc "$$\\\\$$\n", "$$\\\\$$", math: true
+    tc "$$\n^test\n$$\n", "$$\n^test\n$$", math: true
   end
   it 'should parse headings' do
     # Only three differed sized levels of heading are required.

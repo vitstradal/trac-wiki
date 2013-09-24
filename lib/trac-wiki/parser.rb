@@ -43,6 +43,7 @@ module TracWiki
     # Examples: http https ftp ftps
     attr_accessor :allowed_schemes
 
+
     # Disable url escaping for local links
     # Escaping: [[/Test]] --> %2FTest
     # No escaping: [[/Test]] --> Test
@@ -65,6 +66,9 @@ module TracWiki
       options.each_pair {|k,v| send("#{k}=", v) }
     end
 
+    @was_math = false
+    def was_math?; @was_math; end
+
     # Convert CCreole text to HTML and return
     # the result. The resulting HTML does not contain <html> and
     # <body> tags.
@@ -79,6 +83,7 @@ module TracWiki
       @p = false
       @stack = []
       @stacki = []
+      @was_math = false
       parse_block(@text)
       @out
     end
@@ -329,6 +334,8 @@ module TracWiki
 
       when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
         @out << '\( ' << escape_html($1) << ' \)'
+        @was_math = true
+
 #      when /\A\[\[Image\(([^|].*?)(\|(.*?))?\)\]\]/   # image 
 #       @out << make_image($1, $3)
 
@@ -475,10 +482,11 @@ module TracWiki
       until str.empty?
         case
         # pre {{{ ... }}}
-        when math? && str =~ /\A\$\$(.*?)\$\$/
+        when math? && str =~ /\A\$\$(.*?)\$\$/m
           end_paragraph
           nowikiblock = make_nowikiblock($1)
           @out << "$$" << escape_html(nowikiblock) << "$$\n"
+          @was_math = true
         when str =~ /\A\{\{\{\r?\n(.*?)\r?\n\}\}\}/m
           end_paragraph
           nowikiblock = make_nowikiblock($1)
