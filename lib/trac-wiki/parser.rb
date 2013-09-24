@@ -467,30 +467,29 @@ module TracWiki
 
     def parse_block(str)
       until str.empty?
-        case str
-
+        case
         # pre {{{ ... }}}
-        when /\A\{\{\{\r?\n(.*?)\r?\n\}\}\}/m
+        when str =~ /\A\{\{\{\r?\n(.*?)\r?\n\}\}\}/m
           end_paragraph
           nowikiblock = make_nowikiblock($1)
           @out << '<pre>' << escape_html(nowikiblock) << '</pre>'
 
         # horizontal rule
-        when /\A\s*-{4,}\s*$/
+        when str =~ /\A\s*-{4,}\s*$/
           end_paragraph
           @out << '<hr/>'
 
         # heading == Wiki Ruless ==
         # heading == Wiki Ruless ==  #tag
-        when /\A\s*(={1,6})\s*(.*?)\s*=*\s*(#\*([^\s]*))?\s*$(\r?\n)?/
-          end_paragraph
+        when str =~ /\A\s*(={1,6})\s*(.*?)\s*=*\s*(#(\S*))?\s*$(\r?\n)?/
+          level = $1.size
           title= $2
           aname= $4
-          level = $1.size
+          end_paragraph
           @out << make_headline(level, title, aname)
 
         # table row
-        when /\A[ \t]*\|\|(.*)$(\r?\n)?/
+        when str =~ /\A[ \t]*\|\|(.*)$(\r?\n)?/
           if !@stack.include?('table')
             end_paragraph
             start_tag('table')
@@ -498,9 +497,9 @@ module TracWiki
           parse_table_row($1)
 
         # empty line
-        when /\A\s*$(\r?\n)?/
+        when str =~ /\A\s*$(\r?\n)?/
           end_paragraph
-        when /\A([:\w\s]+)::(\s+|\r?\n)/
+        when str =~ /\A([:\w\s]+)::(\s+|\r?\n)/
           term = $1
           start_tag('dl')
           start_tag('dt')
@@ -509,10 +508,10 @@ module TracWiki
           start_tag('dd')
 
         # li
-        when /\A(\s*)([*-]|[aAIi\d]\.)\s+(.*?)$(\r?\n)?/
+        when str =~ /\A(\s*)([*-]|[aAIi\d]\.)\s+(.*?)$(\r?\n)?/
           parse_li_line($1.size, $2, $3)
 
-        when /\A(>[>\s]*)(.*?)$(\r?\n)?/
+        when str =~ /\A(>[>\s]*)(.*?)$(\r?\n)?/
           # citation
           level, quote =  $1.count('>'), $2
 
@@ -522,7 +521,7 @@ module TracWiki
 
 
         # ordinary line
-        when /\A(\s*)(\S+.*?)$(\r?\n)?/
+        when str =~ /\A(\s*)(\S+.*?)$(\r?\n)?/
           spc_size, text =  $1.size, $2
           text.rstrip!
 
