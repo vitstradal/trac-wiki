@@ -124,6 +124,12 @@ describe TracWiki::Parser do
     tc "<h1>Heading 1</h1>", "= Heading 1 ="
     tc "<h2>Heading 2</h2>", "== Heading 2 =="
     tc "<h3>Heading 3</h3>", "=== Heading 3 ==="
+    tc "<a name=\"HE3\"/><h3>Heading 3</h3>", "=== Heading 3 === #HE3"
+    tc "<a name=\"Heading-3\"/><h3>Heading 3</h3>", "=== Heading 3 === #Heading-3"
+    tc "<a name=\"Heading/3\"/><h3>Heading 3</h3>", "=== Heading 3 === #Heading/3"
+    tc "<a name=\"Heading/3\"/><h3>Heading 3</h3>", "=== Heading 3 === #Heading/3  "
+    tc "<a name=\"Heading&lt;3&gt;\"/><h3>Heading 3</h3>", "=== Heading 3 === #Heading<3>"
+    tc "<a name=\"Heading'&quot;3&quot;'\"/><h3>Heading 3</h3>", "=== Heading 3 === #Heading'\"3\"'"
     # WARNING: Optional feature, not specified in 
     tc "<h4>Heading 4</h4>", "==== Heading 4 ===="
     tc "<h5>Heading 5</h5>", "===== Heading 5 ====="

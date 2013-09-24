@@ -234,8 +234,12 @@ module TracWiki
        return ' ' + a.map{|k,v| "#{k}=\"#{v}\"" }.sort.join(' ')
     end
 
-    def make_headline(level, text)
-      "<h#{level}>" << escape_html(text) << "</h#{level}>"
+    def make_headline(level, text, aname)
+      ret = "<h#{level}>" << escape_html(text) << "</h#{level}>"
+      if aname
+        ret = "<a name=\"#{ escape_html(aname) }\"/>" + ret
+      end
+      ret
     end
 
     def make_explicit_link(link)
@@ -477,10 +481,13 @@ module TracWiki
           @out << '<hr/>'
 
         # heading == Wiki Ruless ==
-        when /\A\s*(={1,6})\s*(.*?)\s*=*\s*$(\r?\n)?/
+        # heading == Wiki Ruless ==  #tag
+        when /\A\s*(={1,6})\s*(.*?)\s*=*\s*(#\*([^\s]*))?\s*$(\r?\n)?/
           end_paragraph
+          title= $2
+          aname= $4
           level = $1.size
-          @out << make_headline(level, $2)
+          @out << make_headline(level, title, aname)
 
         # table row
         when /\A[ \t]*\|\|(.*)$(\r?\n)?/
