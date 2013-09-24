@@ -119,6 +119,16 @@ describe TracWiki::Parser do
     tc "<p><em>This is <strong>also</strong> good.</em></p>\n", "''This is **also** good.''"
   end
 
+  it 'should parse math' do
+    tc "<p>\\( the \\)</p>\n", '$the$', math: true
+    tc "<p>test \\( the \\) west</p>\n", 'test $the$ west', math: true
+    tc "<p>test \\( e^{i\\pi} \\) test</p>\n", 'test $e^{i\pi}$ test', math: true
+    tc "<p>test $ e<sup>{i\\pi} test</sup></p>\n", 'test $ e^{i\pi} test', math: true
+    tc "<p>$the$</p>\n", '$the$', math: false
+
+    tc "<p>ahoj</p>\n$$e^{i\\pi}$$\n<p>nazdar</p>\n", "ahoj\n$$e^{i\\pi}$$\nnazdar", math: true
+    tc "<p>ahoj $$e<sup>{i\\pi}$$ nazdar</sup></p>\n", "ahoj\n$$e^{i\\pi}$$\nnazdar", math: false
+  end
   it 'should parse headings' do
     # Only three differed sized levels of heading are required.
     tc "<h1>Heading 1</h1>", "= Heading 1 ="

@@ -54,6 +54,9 @@ module TracWiki
     attr_writer :no_link
     def no_link?; @no_link; end
 
+    attr_writer :math
+    def math?; @math; end
+
     # Create a new Parser instance.
     def initialize(text, options = {})
       @allowed_schemes = %w(http https ftp ftps)
@@ -318,11 +321,14 @@ module TracWiki
     end
 
     def parse_inline_tag(str)
-      case str
-      when /\A\{\{\{(.*?\}*)\}\}\}/     # inline pre (tt)
+      case
+      when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline pre (tt)
         @out << '<tt>' << escape_html($1) << '</tt>'
-      when /\A`(.*?)`/                  # inline pre (tt)
+      when str =~ /\A`(.*?)`/                  # inline pre (tt)
         @out << '<tt>' << escape_html($1) << '</tt>'
+
+      when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
+        @out << '\( ' << escape_html($1) << ' \)'
 #      when /\A\[\[Image\(([^|].*?)(\|(.*?))?\)\]\]/   # image 
 #       @out << make_image($1, $3)
 
@@ -333,31 +339,31 @@ module TracWiki
 #          @out << escape_html($&)
 #        end                             # link
 
-      when /\A([:alpha:]|[:digit:])+/
+      when str =~ /\A([:alpha:]|[:digit:])+/
         @out << $&                      # word
-      when /\A\s+/
+      when str =~ /\A\s+/
         @out << ' ' if @out[-1] != ?\s  # spaces
-      when /\A'''''/
+      when str =~ /\A'''''/
         toggle_tag 'strongem', $&       # bolditallic
-      when /\A\*\*/, /\A'''/
+      when str =~ /\A\*\*/ || str =~ /\A'''/
         toggle_tag 'strong', $&         # bold
-      when /\A''/, /\A\/\//
+      when str =~ /\A''/ || str =~ /\A\/\//
         toggle_tag 'em', $&             # italic
-      when /\A\\\\/, /\A\[\[br\]\]/i
+      when str =~ /\A\\\\/ || str =~ /\A\[\[br\]\]/i
         @out << '<br/>'                 # newline
-      when /\A__/
+      when str =~ /\A__/
         toggle_tag 'u', $&              # underline
-      when /\A~~/
+      when str =~ /\A~~/
         toggle_tag 'del', $&            # delete
 #      when /\A\+\+/
 #        toggle_tag 'ins', $&           # insert
-      when /\A\^/
+      when str =~ /\A\^/
         toggle_tag 'sup', $&            # ^{}
-      when /\A,,/
+      when str =~ /\A,,/
         toggle_tag 'sub', $&            # _{}
-      when /\A!([^\s])/
+      when str =~ /\A!([^\s])/
         @out << escape_html($1)         # !neco
-      when /./
+      when str =~ /./
         @out << escape_html($&)         # ordinal char
       end
       return $'
@@ -469,6 +475,10 @@ module TracWiki
       until str.empty?
         case
         # pre {{{ ... }}}
+        when math? && str =~ /\A\$\$(.*?)\$\$/
+          end_paragraph
+          nowikiblock = make_nowikiblock($1)
+          @out << "$$" << escape_html(nowikiblock) << "$$\n"
         when str =~ /\A\{\{\{\r?\n(.*?)\r?\n\}\}\}/m
           end_paragraph
           nowikiblock = make_nowikiblock($1)
