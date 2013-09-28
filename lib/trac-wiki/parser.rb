@@ -58,6 +58,9 @@ module TracWiki
     attr_writer :math
     def math?; @math; end
 
+    attr_writer :merge
+    def merge?; @merge; end
+
     # Create a new Parser instance.
     def initialize(text, options = {})
       @allowed_schemes = %w(http https ftp ftps)
@@ -487,6 +490,15 @@ module TracWiki
           nowikiblock = make_nowikiblock($1)
           @out << "$$" << escape_html(nowikiblock) << "$$\n"
           @was_math = true
+        when merge? && str =~ /\A(<<<<<<<|=======|>>>>>>>)\s+(\S+).*$(\r?\n)?/
+          who = $2
+          merge_class = case $1[0]
+                          when '<' ; 'merge-mine'
+                          when '=' ; 'merge-orig'
+                          when '>' ; 'merge-your'
+                        end
+          end_paragraph
+          @out << "<div class='merge #{merge_class}'>" << escape_html(who) << "</div>\n"
         when str =~ /\A\{\{\{\r?\n(.*?)\r?\n\}\}\}/m
           end_paragraph
           nowikiblock = make_nowikiblock($1)

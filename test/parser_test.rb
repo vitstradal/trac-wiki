@@ -131,6 +131,10 @@ describe TracWiki::Parser do
 
     tc "$$\\\\$$\n", "$$\\\\$$", math: true
     tc "$$\n^test\n$$\n", "$$\n^test\n$$", math: true
+
+    tc "<p>$a<sup>b</sup>c$</p>\n", "!$a^b^c$", math: true
+    tc "<p>$a<strong>b</strong>c$</p>\n", "!$a**b**c$", math: true
+    tc "<p>!$a$</p>\n", "!!!$a$", math: true
   end
   it 'should parse headings' do
     # Only three differed sized levels of heading are required.
@@ -788,6 +792,12 @@ describe TracWiki::Parser do
     tc("<p><a href=\"a%2Fb%2Fc\">a/b/c</a></p>\n", "[[a/b/c]]")
     tc("<p><a href=\"a%2Fb%2Fc\">a/b/c</a></p>\n", "[a/b/c]")
     tc("<p><a href=\"a/b/c\">a/b/c</a></p>\n", "[[a/b/c]]", :no_escape => true)
+  end
+  it 'should support merge' do
+    tc "<div class='merge merge-orig'>original</div>\n", "======= original", :merge => true
+    tc "<div class='merge merge-mine'>mine</div>\n",     "<<<<<<< mine", :merge => true
+    tc "<div class='merge merge-your'>your</div>\n",     ">>>>>>> your", :merge => true
+    tc "<p>bhoj</p>\n<div class='merge merge-your'>your</div>\n<p>ahoj</p>\n",     "bhoj\n>>>>>>> your\nahoj", :merge => true
   end
 end
 # vim: tw=0
