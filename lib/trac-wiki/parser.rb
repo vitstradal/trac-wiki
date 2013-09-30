@@ -490,11 +490,12 @@ module TracWiki
           nowikiblock = make_nowikiblock($1)
           @out << "$$" << escape_html(nowikiblock) << "$$\n"
           @was_math = true
-        when merge? && str =~ /\A(<<<<<<<|=======|>>>>>>>)\s+(\S+).*$(\r?\n)?/
+        when merge? && str =~ /\A(<{7}|={7}|>{7}|\|{7}) *(\S*).*$(\r?\n)?/
           who = $2
           merge_class = case $1[0]
                           when '<' ; 'merge-mine'
-                          when '=' ; 'merge-orig'
+                          when '=' ; 'merge-split'
+                          when '|' ; 'merge-orig'
                           when '>' ; 'merge-your'
                         end
           end_paragraph

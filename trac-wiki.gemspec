@@ -5,6 +5,7 @@ Gem::Specification.new do |s|
   s.name = 'trac-wiki'
   s.version = TracWiki::VERSION
   s.date = Date.today.to_s
+  s.licenses = ['GPL-2']
 
   s.authors = ['Vitas Stradal']
   s.email = ['vitas@matfyz.cz' ]

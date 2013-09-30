@@ -794,10 +794,14 @@ describe TracWiki::Parser do
     tc("<p><a href=\"a/b/c\">a/b/c</a></p>\n", "[[a/b/c]]", :no_escape => true)
   end
   it 'should support merge' do
-    tc "<div class='merge merge-orig'>original</div>\n", "======= original", :merge => true
+    tc "<div class='merge merge-orig'>orig</div>\n",     "||||||| orig", :merge => true
     tc "<div class='merge merge-mine'>mine</div>\n",     "<<<<<<< mine", :merge => true
     tc "<div class='merge merge-your'>your</div>\n",     ">>>>>>> your", :merge => true
     tc "<p>bhoj</p>\n<div class='merge merge-your'>your</div>\n<p>ahoj</p>\n",     "bhoj\n>>>>>>> your\nahoj", :merge => true
+    tc "<div class='merge merge-split'></div>\n<p>ahoj</p>\n", "=======\nahoj\n", :merge => true
+    tc "<div class='merge merge-split'>split</div>\n", "======= split", :merge => true
+
+    tc "<h6></h6><p>ahoj</p>\n", "=======\nahoj\n", :merge => false
   end
 end
 # vim: tw=0
