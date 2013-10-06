@@ -116,6 +116,7 @@ module TracWiki
     end
 
     def make_toc_html
+      @out = ''
       parse_block(make_toc)
     end
 
@@ -312,9 +313,12 @@ module TracWiki
 
     def make_toc
         @headings.map do |h|
-           return '' if h.level < 1
-           ind = "  " * (h.level - 1)
-           "#{ind}* [[$#{h.aname}|#{h.title}]]\n"
+           if h[:level] < 1
+             ''
+           else
+             ind = "  " * (h[:level] - 1)
+             "#{ind}* [[##{h[:aname]}|#{h[:title]}]]\n"
+           end
         end.join
     end
 
@@ -638,6 +642,7 @@ module TracWiki
         str = $'
       end
       end_paragraph
+      @headings.last[:eline] = @line_no - 1 
       @out
     end
 

@@ -818,27 +818,27 @@ describe TracWiki::Parser do
   end
   it 'should compute headers' do
     h( [ {:level=>0, :sline=>1, :eline=>2},
-         {:title=>"ahoj", :sline=>3, :aname=>nil, :level=>2},
+         {:title=>"ahoj", :sline=>3, :eline=> 5, :aname=>nil, :level=>2},
        ],
        "\nahoj\n== ahoj ==\nbhoj\nchoj\n")
     h( [ {:level=>0, :sline=>1, :eline=>2},
          {:title=>"ahoj", :sline=>3, :eline => 5, :aname=>nil, :level=>2},
-         {:title=>"dhoj", :sline=>6, :aname=>nil, :level=>3},
+         {:title=>"dhoj", :sline=>6, :eline => 7, :aname=>nil, :level=>3},
        ],
        "\nahoj\n== ahoj ==\nbhoj\nchoj\n===dhoj===\nkuk\n")
     h( [ {:level=>0, :sline=>1, :eline=>2},
          {:title=>"ahoj", :sline=>3, :eline => 7, :aname=>nil, :level=>2},
-         {:title=>"dhoj", :sline=>8, :aname=>nil, :level=>3},
+         {:title=>"dhoj", :sline=>8, :eline => 9, :aname=>nil, :level=>3},
        ],
        "\nahoj\n== ahoj ==\nbhoj\nchoj\n\n\n===dhoj===\nkuk\n")
     h( [ {:level=>0, :sline=>1, :eline=>2},
          {:title=>"ah o ~'j", :sline=>3, :eline => 5, :aname=>nil, :level=>2},
-         {:title=>"*dhoj", :sline=>6, :aname=>'ble', :level=>3},
+         {:title=>"*dhoj",    :sline=>6, :eline => 7, :aname=>'ble', :level=>3},
        ],
        "\nahoj\n== ah o ~'j ==\nbhoj\nchoj\n===*dhoj   ===#ble\nkuk\n")
     h( [ {:level=>0, :sline=>1, :eline=>2},
          {:title=>"ah o ~'j", :sline=>3, :eline => 8, :aname=>nil, :level=>2},
-         {:title=>"*dhoj", :sline=>9, :aname=>'ble', :level=>3},
+         {:title=>"*dhoj", :sline=>9, :eline => 11, :aname=>'ble', :level=>3},
        ], <<eos)
 
 ahoj
