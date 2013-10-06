@@ -115,6 +115,10 @@ module TracWiki
       @out
     end
 
+    def make_toc_html
+      parse_block(make_toc)
+    end
+
     protected
 
     # Escape any characters with special meaning in HTML using HTML
@@ -285,7 +289,7 @@ module TracWiki
       ret += ">" + escape_html(text)
 
       if edit_heading?
-        ret += edit_heading_link(@heading.size - 1)
+        ret += edit_heading_link(@headings.size - 1)
       end
 
       ret += "</h#{level}>"
@@ -305,12 +309,9 @@ module TracWiki
       make_local_link(link)
     end
 
-    def make_toc_html
-      parse_block(make_toc)
-    end
 
     def make_toc
-        @heading.map do |h|
+        @headings.map do |h|
            return '' if h.level < 1
            ind = "  " * (h.level - 1)
            "#{ind}* [[$#{h.aname}|#{h.title}]]\n"
