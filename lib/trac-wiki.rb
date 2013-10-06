@@ -13,4 +13,7 @@ module TracWiki
   def self.render(text, options = {})
     Parser.new(text, options).to_html
   end
+  def self.parser(text, options = {})
+    Parser.new(text, options)
+  end
 end

@@ -1,8 +1,16 @@
 require 'trac-wiki'
+require 'pp'
+
 
 class Bacon::Context
   def tc(html, wiki, options = {})
     TracWiki.render(wiki, options).should.equal html
+  end
+  def  h(hash, wiki, opts = {})
+    parser = TracWiki.parser(wiki, opts)
+    parser.to_html
+    #pp parser.headers
+    parser.headings.should == hash
   end
 end
 
@@ -141,12 +149,14 @@ describe TracWiki::Parser do
     tc "<h1>Heading 1</h1>", "= Heading 1 ="
     tc "<h2>Heading 2</h2>", "== Heading 2 =="
     tc "<h3>Heading 3</h3>", "=== Heading 3 ==="
-    tc "<a name=\"HE3\"/><h3>Heading 3</h3>", "=== Heading 3 === #HE3"
-    tc "<a name=\"Heading-3\"/><h3>Heading 3</h3>", "=== Heading 3 === #Heading-3"
-    tc "<a name=\"Heading/3\"/><h3>Heading 3</h3>", "=== Heading 3 === #Heading/3"
-    tc "<a name=\"Heading/3\"/><h3>Heading 3</h3>", "=== Heading 3 === #Heading/3  "
-    tc "<a name=\"Heading&lt;3&gt;\"/><h3>Heading 3</h3>", "=== Heading 3 === #Heading<3>"
-    tc "<a name=\"Heading'&quot;3&quot;'\"/><h3>Heading 3</h3>", "=== Heading 3 === #Heading'\"3\"'"
+    tc "<h3 id=\"HE3\">Heading 3</h3>", "=== Heading 3 === #HE3"
+    tc "<h3 id=\"Heading-3\">Heading 3</h3>", "=== Heading 3 === #Heading-3"
+    tc "<h3 id=\"Heading/3\">Heading 3</h3>", "=== Heading 3 === #Heading/3"
+    tc "<h3 id=\"Heading/3\">Heading 3</h3>", "=== Heading 3 === #Heading/3  "
+    tc "<h3 id=\"Heading/3\">Heading 3</h3><h3 id=\"Heading/3.2\">Heading 3</h3>",
+       "=== Heading 3 === #Heading/3\n=== Heading 3 === #Heading/3\n  "
+    tc "<h3 id=\"Heading&lt;3&gt;\">Heading 3</h3>", "=== Heading 3 === #Heading<3>"
+    tc "<h3 id=\"Heading'&quot;3&quot;'\">Heading 3</h3>", "=== Heading 3 === #Heading'\"3\"'"
     # WARNING: Optional feature, not specified in 
     tc "<h4>Heading 4</h4>", "==== Heading 4 ===="
     tc "<h5>Heading 5</h5>", "===== Heading 5 ====="
@@ -182,6 +192,8 @@ describe TracWiki::Parser do
   it 'should parse links' do
     #  Links
     tc "<p><a href=\"link\">link</a></p>\n", "[[link]]"
+    tc "<p><a href=\"link#link\">link#link</a></p>\n", "[[link#link]]"
+    tc "<p><a href=\"#link\">#link</a></p>\n", "[[#link]]"
 
     #  Links can appear in paragraphs (i.e. inline item)
     tc "<p>Hello, <a href=\"world\">world</a></p>\n", "Hello, [[world]]"
@@ -191,11 +203,12 @@ describe TracWiki::Parser do
 
     #  URLs
     tc "<p><a href=\"http://www.example.org/\">http://www.example.org/</a></p>\n", "[[http://www.example.org/]]"
+    tc "<p><a href=\"http://www.example.org/#anch\">http://www.example.org/#anch</a></p>\n", "[[http://www.example.org/#anch]]"
 
     #  Single punctuation characters at the end of URLs
     # should not be considered a part of the URL.
     [',','.','?','!',':',';','\'','"'].each do |punct|
-      esc_punct = CGI::escapeHTML(punct)
+      esc_punct = TracWiki::Parser.escapeHTML(punct)
       tc "<p><a href=\"http://www.example.org/\">http://www.example.org/</a>#{esc_punct}</p>\n", "http://www.example.org/#{punct}"
     end
     #  Nameds URLs (by example)
@@ -802,6 +815,44 @@ describe TracWiki::Parser do
     tc "<div class='merge merge-split'>split</div>\n", "======= split", :merge => true
 
     tc "<h6></h6><p>ahoj</p>\n", "=======\nahoj\n", :merge => false
+  end
+  it 'should compute headers' do
+    h( [ {:level=>0, :sline=>1, :eline=>2},
+         {:title=>"ahoj", :sline=>3, :aname=>nil, :level=>2},
+       ],
+       "\nahoj\n== ahoj ==\nbhoj\nchoj\n")
+    h( [ {:level=>0, :sline=>1, :eline=>2},
+         {:title=>"ahoj", :sline=>3, :eline => 5, :aname=>nil, :level=>2},
+         {:title=>"dhoj", :sline=>6, :aname=>nil, :level=>3},
+       ],
+       "\nahoj\n== ahoj ==\nbhoj\nchoj\n===dhoj===\nkuk\n")
+    h( [ {:level=>0, :sline=>1, :eline=>2},
+         {:title=>"ahoj", :sline=>3, :eline => 7, :aname=>nil, :level=>2},
+         {:title=>"dhoj", :sline=>8, :aname=>nil, :level=>3},
+       ],
+       "\nahoj\n== ahoj ==\nbhoj\nchoj\n\n\n===dhoj===\nkuk\n")
+    h( [ {:level=>0, :sline=>1, :eline=>2},
+         {:title=>"ah o ~'j", :sline=>3, :eline => 5, :aname=>nil, :level=>2},
+         {:title=>"*dhoj", :sline=>6, :aname=>'ble', :level=>3},
+       ],
+       "\nahoj\n== ah o ~'j ==\nbhoj\nchoj\n===*dhoj   ===#ble\nkuk\n")
+    h( [ {:level=>0, :sline=>1, :eline=>2},
+         {:title=>"ah o ~'j", :sline=>3, :eline => 8, :aname=>nil, :level=>2},
+         {:title=>"*dhoj", :sline=>9, :aname=>'ble', :level=>3},
+       ], <<eos)
+
+ahoj
+== ah o ~'j ==
+{{{
+==a1.5hoj==
+}}}
+
+
+===*dhoj   ===#ble
+kuk
+
+eos
+
   end
 end
 # vim: tw=0

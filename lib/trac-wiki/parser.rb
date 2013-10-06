@@ -1,5 +1,6 @@
 require 'cgi'
 require 'uri'
+require 'iconv'
 
 # :main: TracWiki
 
@@ -43,6 +44,8 @@ module TracWiki
     # Examples: http https ftp ftps
     attr_accessor :allowed_schemes
 
+    attr_accessor :headings
+
 
     # Disable url escaping for local links
     # Escaping: [[/Test]] --> %2FTest
@@ -58,12 +61,30 @@ module TracWiki
     attr_writer :math
     def math?; @math; end
 
+    attr_writer :edit_heading
+    def edit_heading?; @edit_heading; end
+
+    # understand merge tags  (see diff3(1))
+    # >>>>>>> mine
+    # ||||||| orig
+    # =======
+    # <<<<<<< yours
+    # convert to <div class="merge merge-mine">mine</div>
     attr_writer :merge
     def merge?; @merge; end
+
+    # every heading will had id, generated from heading text
+    attr_writer :id_from_heading
+    def id_from_heading?; @id_from_heading; end
+
+    # when id_from_heading, non ascii char are transliterated to ascii
+    attr_writer :id_translit
+    def id_translit?; @id_translit; end
 
     # Create a new Parser instance.
     def initialize(text, options = {})
       @allowed_schemes = %w(http https ftp ftps)
+      @anames = {}
       @text = text
       @no_escape = nil
       options.each_pair {|k,v| send("#{k}=", v) }
@@ -83,10 +104,13 @@ module TracWiki
     # #=> "<p><strong>Hello <em>World</em></strong></p>"
     def to_html
       @out = ''
+      @edit_heading_class = 'editheading'
+      @headings = [ {level: 0, sline: 1 } ]
       @p = false
       @stack = []
       @stacki = []
       @was_math = false
+      @line_no = 1
       parse_block(@text)
       @out
     end
@@ -94,9 +118,14 @@ module TracWiki
     protected
 
     # Escape any characters with special meaning in HTML using HTML
-    # entities.
+    # entities. (&<>" not ')
     def escape_html(string)
-      CGI::escapeHTML(string)
+      #CGI::escapeHTML(string)
+      Parser.escapeHTML(string)
+    end
+
+    def self.escapeHTML(string)
+      string.gsub(/&/n, '&amp;').gsub(/\"/n, '&quot;').gsub(/>/n, '&gt;').gsub(/</n, '&lt;')
     end
 
     # Escape any characters with special meaning in URLs using URL
@@ -176,7 +205,10 @@ module TracWiki
     # make_local_link("LocalLink") #=> "/LocalLink"
     # make_local_link("Wikipedia:Bread") #=> "http://en.wikipedia.org/wiki/Bread"
     def make_local_link(link) #:doc:
-      no_escape? ? link : escape_url(link)
+      return link if no_escape?
+      link, anch = link.split(/#/, 2)
+      return escape_url(link) if ! anch
+      "#{escape_url(link)}##{escape_url(anch)}"
     end
 
     # Sanatize a direct url (e.g. http://wikipedia.org/). The default
@@ -246,11 +278,22 @@ module TracWiki
     end
 
     def make_headline(level, text, aname)
-      ret = "<h#{level}>" << escape_html(text) << "</h#{level}>"
+      ret = "<h#{level}"
       if aname
-        ret = "<a name=\"#{ escape_html(aname) }\"/>" + ret
+        ret += " id=\"#{ escape_html(aname) }\""
       end
+      ret += ">" + escape_html(text)
+
+      if edit_heading?
+        ret += edit_heading_link(@heading.size - 1)
+      end
+
+      ret += "</h#{level}>"
       ret
+    end
+
+    def edit_heading_link(section)
+        "<a class='#{@edit_heading_class}' href=\"?edit=#{section}\">edit</a>"
     end
 
     def make_explicit_link(link)
@@ -260,6 +303,18 @@ module TracWiki
       rescue URI::InvalidURIError
       end
       make_local_link(link)
+    end
+
+    def make_toc_html
+      parse_block(make_toc)
+    end
+
+    def make_toc
+        @heading.map do |h|
+           return '' if h.level < 1
+           ind = "  " * (h.level - 1)
+           "#{ind}* [[$#{h.aname}|#{h.title}]]\n"
+        end.join
     end
 
     def parse_inline(str)
@@ -512,10 +567,12 @@ module TracWiki
 
         # heading == Wiki Ruless ==
         # heading == Wiki Ruless ==  #tag
-        when str =~ /\A\s*(={1,6})\s*(.*?)\s*=*\s*(#(\S*))?\s*$(\r?\n)?/
+        when str =~ /\A[[:blank:]]*(={1,6})\s*(.*?)\s*=*\s*(#(\S*))?\s*$(\r?\n)?/
           level = $1.size
           title= $2
-          aname= $4
+          aname= aname_nice($4, title)
+          @headings.last[:eline] = @line_no - 1
+          @headings.push({ :title =>  title, :sline => @line_no, :aname => aname, :level => level, })
           end_paragraph
           @out << make_headline(level, title, aname)
 
@@ -576,10 +633,33 @@ module TracWiki
         else # case str
           raise "Parse error at #{str[0,30].inspect}"
         end
+        @line_no += ($`+$&).count("\n")
         str = $'
       end
       end_paragraph
       @out
     end
+
+    def aname_nice(aname, title)
+
+      if aname.nil? && id_from_heading?
+        aname = title.gsub /\s+/, '_'
+        if id_translit?
+          aname = Iconv.iconv('ascii//translit', 'utf-8', aname).join
+        end
+      end
+      return nil if aname.nil?
+      aname_ori = aname
+      count = 2
+      while @anames[aname]
+        aname = aname_ori + ".#{count}"
+        count+=1
+      end
+      @anames[aname] = true
+      aname
+    end
+
+
+
   end
 end
