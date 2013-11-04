@@ -45,6 +45,7 @@ module TracWiki
     attr_accessor :allowed_schemes
 
     attr_accessor :headings
+    attr_accessor :base
 
 
     # Disable url escaping for local links
@@ -87,7 +88,9 @@ module TracWiki
       @anames = {}
       @text = text
       @no_escape = nil
+      @base = ''
       options.each_pair {|k,v| send("#{k}=", v) }
+      @base += '/' if !@base.empty? && @base[-1] != '/'
     end
 
     @was_math = false
@@ -130,7 +133,7 @@ module TracWiki
     end
 
     def self.escapeHTML(string)
-      string.gsub(/&/n, '&amp;').gsub(/\"/n, '&quot;').gsub(/>/n, '&gt;').gsub(/</n, '&lt;')
+      string.gsub(/&/, '&amp;').gsub(/\"/, '&quot;').gsub(/>/, '&gt;').gsub(/</, '&lt;')
     end
 
     # Escape any characters with special meaning in URLs using URL
@@ -210,10 +213,10 @@ module TracWiki
     # make_local_link("LocalLink") #=> "/LocalLink"
     # make_local_link("Wikipedia:Bread") #=> "http://en.wikipedia.org/wiki/Bread"
     def make_local_link(link) #:doc:
-      return link if no_escape?
+      return "#{@base}#{link}" if no_escape?
       link, anch = link.split(/#/, 2)
-      return escape_url(link) if ! anch
-      "#{escape_url(link)}##{escape_url(anch)}"
+      return "#{@base}#{escape_url(link)}" if ! anch
+      "#{@base}#{escape_url(link)}##{escape_url(anch)}"
     end
 
     # Sanatize a direct url (e.g. http://wikipedia.org/). The default

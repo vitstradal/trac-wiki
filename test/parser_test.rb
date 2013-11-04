@@ -192,6 +192,7 @@ describe TracWiki::Parser do
   it 'should parse links' do
     #  Links
     tc "<p><a href=\"link\">link</a></p>\n", "[[link]]"
+    tc "<p><a href=\"BASE/link\">link</a></p>\n", "[[link]]",  base: 'BASE'
     tc "<p><a href=\"link#link\">link#link</a></p>\n", "[[link#link]]"
     tc "<p><a href=\"#link\">#link</a></p>\n", "[[#link]]"
 
