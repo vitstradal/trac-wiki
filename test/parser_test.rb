@@ -193,6 +193,7 @@ describe TracWiki::Parser do
     #  Links
     tc "<p><a href=\"link\">link</a></p>\n", "[[link]]"
     tc "<p><a href=\"BASE/link\">link</a></p>\n", "[[link]]",  base: 'BASE'
+    tc "<p><a href=\"BASE/link\">link</a></p>\n", "[[link]]",  base: 'BASE/'
     tc "<p><a href=\"link#link\">link#link</a></p>\n", "[[link#link]]"
     tc "<p><a href=\"#link\">#link</a></p>\n", "[[#link]]"
 
@@ -218,7 +219,7 @@ describe TracWiki::Parser do
 
     # WRNING: Parsing markup within a link is optional
     tc "<p><a href=\"Weird+Stuff\"><strong>Weird</strong> <em>Stuff</em></a></p>\n", "[[Weird Stuff|**Weird** ''Stuff'']]"
-    #tc("<p><a href=\"http://example.org/\"><img src='image.jpg'/></a></p>\n", "[[http://example.org/|{{image.jpg}}]]")
+    #tc("<p><a href=\"http://example.org/\"><img src=\"image.jpg\"/></a></p>\n", "[[http://example.org/|{{image.jpg}}]]")
 
     # Inside bold
     tc "<p><strong><a href=\"link\">link</a></strong></p>\n", "**[[link]]**"
@@ -253,6 +254,7 @@ describe TracWiki::Parser do
   it 'should parse paragraphs' do
     # One or more blank lines end paragraphs.
     tc "<p>This is my text.</p>\n<p>This is more text.</p>\n", "This is\nmy text.\n\nThis is\nmore text."
+    tc "<p>This is my text.</p>\n<p>This is more text.</p>\n", "This is \nmy text.\n\nThis is\nmore text."
     tc "<p>This is my text.</p>\n<p>This is more text.</p>\n", "This is\nmy text.\n\n\nThis is\nmore text."
     tc "<p>This is my text.</p>\n<p>This is more text.</p>\n", "This is\nmy text.\n\n\n\nThis is\nmore text."
 
@@ -460,6 +462,7 @@ describe TracWiki::Parser do
   it 'should parse ambiguious bold and lists' do
     tc "<p><strong> bold text </strong></p>\n", "** bold text **"
     tc "<p><blockquote><strong> bold text </strong></blockquote></p>\n", " ** bold text **"
+    tc "<p><blockquote><strong> bold text </strong></blockquote></p>\n", " ** bold\ntext **"
   end
 
   it 'should parse nowiki' do
@@ -499,8 +502,8 @@ describe TracWiki::Parser do
     # Image tags should be escape
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]")
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]", :no_link=>true)
-    tc("<p><img src=\"image.jpg\" alt=\"a%22tag%22\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]")
-    tc("<p><img src=\"image.jpg\" alt=\"a%22tag%22\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]", :no_link=>true)
+    tc("<p><img alt=\"a%22tag%22\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]")
+    tc("<p><img alt=\"a%22tag%22\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]", :no_link=>true)
 
     # Malicious links should not be converted.
     tc("<p><a href=\"javascript%3Aalert%28%22Boo%21%22%29\">Click</a></p>\n", "[[javascript:alert(\"Boo!\")|Click]]")
@@ -551,19 +554,19 @@ describe TracWiki::Parser do
     tc "<table><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||World!||"
     tc "<table><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||\\\n||World!||"
     tc "<table><tr><td>He</td><td>llo</td><td>World!</td></tr></table>", "||He||llo||\\\n||World!||"
-    tc "<table><tr><td>Hello</td><td colspan='2'>World!</td></tr></table>", "||Hello||||World!||"
-    tc "<table><tr><td>Hello</td><td colspan='2'>kuk</td><td>World!</td></tr></table>", "||Hello||||kuk||\\\n||World!||"
-    tc "<table><tr><td>1</td><td>2</td><td>3</td></tr><tr><td colspan='2'>1-2</td><td>3</td></tr><tr><td>1</td><td colspan='2'>2-3</td></tr><tr><td colspan='3'>1-2-3</td></tr></table>", "|| 1 || 2 || 3 ||\n|||| 1-2 || 3 ||\n|| 1 |||| 2-3 ||\n|||||| 1-2-3 ||\n"
+    tc "<table><tr><td>Hello</td><td colspan=\"2\">World!</td></tr></table>", "||Hello||||World!||"
+    tc "<table><tr><td>Hello</td><td colspan=\"2\">kuk</td><td>World!</td></tr></table>", "||Hello||||kuk||\\\n||World!||"
+    tc "<table><tr><td>1</td><td>2</td><td>3</td></tr><tr><td colspan=\"2\">1-2</td><td>3</td></tr><tr><td>1</td><td colspan=\"2\">2-3</td></tr><tr><td colspan=\"3\">1-2-3</td></tr></table>", "|| 1 || 2 || 3 ||\n|||| 1-2 || 3 ||\n|| 1 |||| 2-3 ||\n|||||| 1-2-3 ||\n"
 
-    tc "<table><tr><td>table</td><td style='text-align:center'>center</td></tr></table>", "||table||   center  ||"
-    tc "<table><tr><td>table</td><td style='text-align:right'>right</td></tr></table>", "||table||   right||"
-    tc "<table><tr><td>table</td><td style='text-align:center'>center</td><td style='text-align:right'>right</td></tr></table>", "||table||  center  ||   right||"
+    tc "<table><tr><td>table</td><td style=\"text-align:center\">center</td></tr></table>", "||table||   center  ||"
+    tc "<table><tr><td>table</td><td style=\"text-align:right\">right</td></tr></table>", "||table||   right||"
+    tc "<table><tr><td>table</td><td style=\"text-align:center\">center</td><td style=\"text-align:right\">right</td></tr></table>", "||table||  center  ||   right||"
 
     tc "<table><tr><td>Hello, World!</td></tr></table>", "||Hello, World!||"
-    tc "<table><tr><td style='text-align:right'>Hello, Right World!</td></tr></table>", "|| Hello, Right World!||"
-    tc "<table><tr><th style='text-align:right'>Hello, Right World!</th></tr></table>", "||= Hello, Right World!=||"
-    tc "<table><tr><td style='text-align:center'>Hello, Centered World!</td></tr></table>", "||    Hello, Centered World!  ||"
-    tc "<table><tr><th style='text-align:center'>Hello, Centered World!</th></tr></table>", "||=    Hello, Centered World!  =||"
+    tc "<table><tr><td style=\"text-align:right\">Hello, Right World!</td></tr></table>", "|| Hello, Right World!||"
+    tc "<table><tr><th style=\"text-align:right\">Hello, Right World!</th></tr></table>", "||= Hello, Right World!=||"
+    tc "<table><tr><td style=\"text-align:center\">Hello, Centered World!</td></tr></table>", "||    Hello, Centered World!  ||"
+    tc "<table><tr><th style=\"text-align:center\">Hello, Centered World!</th></tr></table>", "||=    Hello, Centered World!  =||"
     # Multiple columns
     tc "<table><tr><td>c1</td><td>c2</td><td>c3</td></tr></table>", "||c1||c2||c3||"
     # Multiple rows
@@ -758,16 +761,16 @@ describe TracWiki::Parser do
 
   it 'should parse image' do
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]")
-    tc("<p><img src=\"javascript%3Aimage.jpg\" alt=\"tag\"/></p>\n", "[[Image(javascript:image.jpg,alt=tag)]]")
-    tc("<p><img src=\"image.jpg\" alt=\"tag\"/></p>\n", "[[Image(image.jpg,alt=tag)]]")
+    tc("<p><img alt=\"tag\" src=\"javascript%3Aimage.jpg\"/></p>\n", "[[Image(javascript:image.jpg,alt=tag)]]")
+    tc("<p><img alt=\"tag\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg,alt=tag)]]")
     tc("<p><img src=\"image.jpg\" width=\"120px\"/></p>\n", "[[Image(image.jpg, 120px )]]")
     tc("<p><img src=\"image.jpg\" width=\"120px\"/></p>\n", "[[Image(image.jpg, \t120px   )]]")
-    tc("<p><img src=\"image.jpg\" align=\"right\"/></p>\n", "[[Image(image.jpg, right)]]")
-    tc("<p><img src=\"image.jpg\" align=\"right\" valign=\"top\"/></p>\n", "[[Image(image.jpg, right,top)]]")
-    tc("<p><img src=\"image.jpg\" align=\"right\" valign=\"top\"/></p>\n", "[[Image(image.jpg, top,right)]]")
+    tc("<p><img align=\"right\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg, right)]]")
+    tc("<p><img align=\"right\" src=\"image.jpg\" valign=\"top\"/></p>\n", "[[Image(image.jpg, right,top)]]")
+    tc("<p><img align=\"right\" src=\"image.jpg\" valign=\"top\"/></p>\n", "[[Image(image.jpg, top,right)]]")
     tc("<p><img src=\"image.jpg\" valign=\"top\"/></p>\n", "[[Image(image.jpg, top)]]")
     tc("<p><img src=\"image.jpg\" valign=\"top\"/></p>\n", "[[Image(image.jpg, valign=top)]]")
-    tc("<p><img src=\"image.jpg\" align=\"center\"/></p>\n", "[[Image(image.jpg, center)]]")
+    tc("<p><img align=\"center\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg, center)]]")
     tc("<p><img src=\"image.jpg\" valign=\"middle\"/></p>\n", "[[Image(image.jpg, middle)]]")
     tc("<p><img src=\"image.jpg\" title=\"houhouhou\"/></p>\n", "[[Image(image.jpg, title=houhouhou)]]")
     tc("<p><img src=\"image.jpg\" width=\"120px\"/></p>\n", "[[Image(image.jpg,width=120px)]]")
@@ -808,12 +811,12 @@ describe TracWiki::Parser do
     tc("<p><a href=\"a/b/c\">a/b/c</a></p>\n", "[[a/b/c]]", :no_escape => true)
   end
   it 'should support merge' do
-    tc "<div class='merge merge-orig'>orig</div>\n",     "||||||| orig", :merge => true
-    tc "<div class='merge merge-mine'>mine</div>\n",     "<<<<<<< mine", :merge => true
-    tc "<div class='merge merge-your'>your</div>\n",     ">>>>>>> your", :merge => true
-    tc "<p>bhoj</p>\n<div class='merge merge-your'>your</div>\n<p>ahoj</p>\n",     "bhoj\n>>>>>>> your\nahoj", :merge => true
-    tc "<div class='merge merge-split'></div>\n<p>ahoj</p>\n", "=======\nahoj\n", :merge => true
-    tc "<div class='merge merge-split'>split</div>\n", "======= split", :merge => true
+    tc "<div class=\"merge merge-orig\">orig</div>\n",     "||||||| orig", :merge => true
+    tc "<div class=\"merge merge-mine\">mine</div>\n",     "<<<<<<< mine", :merge => true
+    tc "<div class=\"merge merge-your\">your</div>\n",     ">>>>>>> your", :merge => true
+    tc "<p>bhoj</p>\n<div class=\"merge merge-your\">your</div>\n<p>ahoj</p>\n",     "bhoj\n>>>>>>> your\nahoj", :merge => true
+    tc "<div class=\"merge merge-split\"></div>\n<p>ahoj</p>\n", "=======\nahoj\n", :merge => true
+    tc "<div class=\"merge merge-split\">split</div>\n", "======= split", :merge => true
 
     tc "<h6></h6><p>ahoj</p>\n", "=======\nahoj\n", :merge => false
   end

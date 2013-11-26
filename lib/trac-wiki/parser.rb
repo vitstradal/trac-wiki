@@ -39,13 +39,138 @@ require 'iconv'
 # methods are: make_local_link
 module TracWiki
   class Parser
+    class Node
+      attr_accessor :tag
+      attr_accessor :par
+      attr_accessor :cont
+      attr_accessor :attrs
+      def initialize(tag_name, par=nil, attrs={}, cont=[])
+        @tag = nil
+        @tag = tag_name.to_sym if tag_name
+        @par = par
+        @cont = cont || []
+        @attrs = attrs || {}
+      end
+
+      def add(cont)
+        @cont << cont
+      end
+    end
+    class Tree
+
+      def initialize
+        @root = Node.new(nil)
+        @cur = @root
+      end
+
+      def tag(tag, attrs = nil, cont = nil)
+        if cont.nil? && ! attrs.is_a?(Hash)
+          # tag(:b, "ahoj") -> tag(:b, {}, "ahoj")
+          cont = attrs
+          attrs = nil
+        end
+        cont = [ cont ] if cont.is_a? String
+        @cur.add(Node.new(tag, @cur, attrs, cont))
+        self
+      end
+
+      def tag_beg(tag_name, attrs = nil, cont = nil)
+        node = Node.new(tag_name, @cur, attrs, cont)
+        @cur.add(node)
+        @cur = node
+        self
+      end
+
+      def tag_end(tag_name)
+        if @cur.tag == tag_name.to_sym
+          @cur = @cur.par
+        else
+          raise "tag_end: cur tag is not <#{tag_name}>, but <#{@cur.tag}>"
+        end
+        self
+      end
+
+      # add space if needed
+      def add_spc
+        if @cur.cont.size > 0
+          last = @cur.cont.last
+          if last.is_a?(String) && last[-1] == ?\s
+            return
+          end
+        end
+        add(' ')
+      end
+
+      def add(cont)
+        @cur.add(cont)
+        self
+      end
+
+
+     def find_par(tag_name, node = nil)
+       node = @cur if node.nil?
+       while ! node.par.nil?
+         if node.tag == tag_name
+            return node.par
+         end
+         node = node.par
+       end
+       nil
+     end
+
+     def to_html
+       tree_to_html(@root)
+     end
+
+     def tree_to_html(node)
+        tag = node.tag
+        if tag.nil?
+          return cont_to_s(node.cont)
+        end
+
+        nl = ""
+        #nl = "\n"  if [:div, :h1, :h2, :h3, :h4, :h5, :p].include? tag
+        nl = "\n"  if [:div, :p].include? tag
+
+        if node.cont.size == 0
+          if [:a, :td, :h1, :h2, :h3, :h4, :h5, :h6,:strong, :script].include? tag
+            return "<#{tag}#{attrs_to_s(node.attrs)}></#{tag}>"
+          end
+          return "<#{tag}#{attrs_to_s(node.attrs)}/>#{nl}"
+        end
+
+        return "<#{tag}#{attrs_to_s(node.attrs)}>#{cont_to_s(node.cont)}</#{tag}>#{nl}"
+     end
+
+     def cont_to_s(cont)
+       if cont.is_a? String
+         return cont.to_s
+       end
+       cont.map do |c|
+          if c.is_a? Node
+             tree_to_html(c)
+          else
+             Parser.escapeHTML(c.to_s)
+          end
+        end.join('')
+      end
+
+     def attrs_to_s(attrs)
+       return '' if attrs.nil? || attrs.size == 0
+       ret = ['']
+       attrs.each_pair do |k,v|
+         ret.push "#{Parser.escapeHTML(k.to_s)}=\"#{Parser.escapeHTML(v.to_s)}\"" if !v.nil?
+       end
+       return ret.sort.join(' ')
+     end
+    end
 
     # Allowed url schemes
     # Examples: http https ftp ftps
     attr_accessor :allowed_schemes
 
     attr_accessor :headings
-    attr_accessor :base
+    attr_writer :base
 
 
     # Disable url escaping for local links
@@ -106,7 +231,7 @@ module TracWiki
     # parser.to_html
     # #=> "<p><strong>Hello <em>World</em></strong></p>"
     def to_html
-      @out = ''
+      @tree = Tree.new
       @edit_heading_class = 'editheading'
       @headings = [ {level: 0, sline: 1 } ]
       @p = false
@@ -115,11 +240,11 @@ module TracWiki
       @was_math = false
       @line_no = 1
       parse_block(@text)
-      @out
+      @tree.to_html
     end
 
     def make_toc_html
-      @out = ''
+      @tree = Tree.new
       parse_block(make_toc)
     end
 
@@ -142,16 +267,16 @@ module TracWiki
       CGI::escape(string)
     end
 
-    def start_tag(tag, args = '', lindent = nil)
+    def start_tag(tag, args = {}, lindent = nil)
       lindent = @stacki.last || -1  if lindent.nil?
 
       @stack.push(tag)
       @stacki.push(lindent)
 
       if tag == 'strongem'
-        @out << '<strong><em>'
+        @tree.tag_beg(:strong).tag_beg(:em)
       else
-        @out << '<' << tag << args << '>'
+        @tree.tag_beg(tag, args)
       end
     end
 
@@ -159,11 +284,11 @@ module TracWiki
       tag = @stack.pop
       tagi = @stacki.pop
       if tag == 'strongem'
-        @out << '</em></strong>'
+        @tree.tag_end(:em).tag_end(:strong);
       elsif tag == 'p'
-        @out << "</p>\n"
+        @tree.tag_end(:p)
       else
-        @out << "</#{tag}>"
+        @tree.tag_end(tag)
       end
     end
 
@@ -172,7 +297,7 @@ module TracWiki
         if @stack.last == tag
           end_tag
         else
-          @out << escape_html(match)
+          @tree.add(match)
         end
       else
         start_tag(tag)
@@ -186,7 +311,8 @@ module TracWiki
 
     def start_paragraph
       if @p
-        @out << ' ' if @out[-1] != ?\s
+        #FIXME: multiple space s
+        @tree.add_spc
       else
         end_paragraph
         start_tag('p')
@@ -255,13 +381,14 @@ module TracWiki
     # markup, for example to add html additional attributes or
     # to put divs around the imgs.
     def make_image(uri, attrs='')
-      "<img src=\"#{make_explicit_link(uri)}\"#{make_image_attrs(attrs)}/>"
+      #"<img src=\"#{make_explicit_link(uri)}\"#{make_image_attrs(attrs)}/>"
+      @tree.tag(:img, make_image_attrs(uri, attrs))
     end
 
-    def make_image_attrs(attrs)
-       return '' if ! attrs
-       a = {}
+    def make_image_attrs(uri, attrs)
+       a = {src: make_explicit_link(uri)}
        style = []
+       attrs ||= ''
        attrs.strip.split(/\s*,\s*/).each do |opt|
          case opt
            when /^\d+[^\d]*$/
@@ -280,28 +407,25 @@ module TracWiki
             style.push($1 + ':' + escape_url($3))
          end
        end
-       a['style'] = style.join(';') if ! style.empty?
-       return '' if a.empty?
-       return ' ' + a.map{|k,v| "#{k}=\"#{v}\"" }.sort.join(' ')
+       a[:style] = style.join(';') if ! style.empty?
+       return {}  if a.empty?
+       return a;
     end
 
     def make_headline(level, text, aname)
-      ret = "<h#{level}"
-      if aname
-        ret += " id=\"#{ escape_html(aname) }\""
-      end
-      ret += ">" + escape_html(text)
+
+      hN = "h#{level}".to_sym
+
+      @tree.tag_beg(hN, { id: aname } , text)
 
       if edit_heading?
-        ret += edit_heading_link(@headings.size - 1)
+        edit_heading_link(@headings.size - 1)
       end
-
-      ret += "</h#{level}>"
-      ret
+      @tree.tag_end(hN)
     end
 
     def edit_heading_link(section)
-        "<a class='#{@edit_heading_class}' href=\"?edit=#{section}\">edit</a>"
+        @tree.tag(:a, { class:  @edit_heading_class, href: "?edit=#{section}"}, "edit")
     end
 
     def make_explicit_link(link)
@@ -332,18 +456,18 @@ module TracWiki
         when /\A(!)?((https?|ftps?):\/\/\S+?)(?=([\]\,.?!:;"'\)]+)?(\s|$))/
           str = $'
           if $1
-            @out << escape_html($2)
+            @tree.add($2)
           else
             if uri = make_direct_link($2)
-              @out << '<a href="' << escape_html(uri) << '">' << escape_html($2) << '</a>'
+              @tree.tag(:a, {href:uri}, $2)
             else
-              @out << escape_html($&)
+              @tree.add($&)
             end
           end
         # [[Image(pic.jpg|tag)]]
         when /\A\[\[Image\(([^,]*?)(,(.*?))?\)\]\]/   # image 
           str = $'
-          @out << make_image($1, $3)
+          make_image($1, $3)
         # [[link]]
         #          [     link1          | text2          ]
         when /\A \[ \s* ([^\[|]*?) \s* (\|\s*(.*?))? \s* \] /mx
@@ -364,58 +488,50 @@ module TracWiki
     def make_link(link, content, whole)
       # specail "link" [[BR]]:
       if link =~ /^br$/i
-        @out << '<br/>'
+        @tree.tag(:br)
         return
       end
       uri = make_explicit_link(link)
       if not uri
-        @out << escape_html(whole)
+        @tree.add(whole)
         return
       end
 
       if no_link?
         if uri !~ /^(ftp|https?):/
-          @out << escape_html(whole)
+          @tree.add(whole)
           return
         end
       end
 
-      @out << '<a href="' << escape_html(uri) << '">'
+      @tree.tag_beg(:a, {href:uri})
       if content
         until content.empty?
           content = parse_inline_tag(content)
         end
       else
-          @out << escape_html(link)
+          @tree.add(link)
       end
-      @out << '</a>'
+      @tree.tag_end(:a)
     end
 
     def parse_inline_tag(str)
       case
       when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline pre (tt)
-        @out << '<tt>' << escape_html($1) << '</tt>'
+        @tree.tag(:tt, $1)
       when str =~ /\A`(.*?)`/                  # inline pre (tt)
-        @out << '<tt>' << escape_html($1) << '</tt>'
+        @tree.tag(:tt, $1)
 
       when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
-        @out << '\( ' << escape_html($1) << ' \)'
+        @tree.add("\\( #{$1} \\)")
         @was_math = true
 
-#      when /\A\[\[Image\(([^|].*?)(\|(.*?))?\)\]\]/   # image 
-#       @out << make_image($1, $3)
-
-#      when /\A\{\{\s*(.*?)\s*(\|\s*(.*?)\s*)?\}\}/
-#        if uri = make_image_link($1)
-#          @out << make_image(uri, $3)
-#        else
-#          @out << escape_html($&)
-#        end                             # link
-
       when str =~ /\A([:alpha:]|[:digit:])+/
-        @out << $&                      # word
+        @tree.add($&)                      # word
       when str =~ /\A\s+/
-        @out << ' ' if @out[-1] != ?\s  # spaces
+        # FIXME: multiple spaces
+        @tree.add_spc
+        #@tree.add(' ') if @out[-1] != ?\s  # spaces
       when str =~ /\A'''''/
         toggle_tag 'strongem', $&       # bolditallic
       when str =~ /\A\*\*/ || str =~ /\A'''/
@@ -423,7 +539,7 @@ module TracWiki
       when str =~ /\A''/ || str =~ /\A\/\//
         toggle_tag 'em', $&             # italic
       when str =~ /\A\\\\/ || str =~ /\A\[\[br\]\]/i
-        @out << '<br/>'                 # newline
+        @tree.tag(:br)                  # newline
       when str =~ /\A__/
         toggle_tag 'u', $&              # underline
       when str =~ /\A~~/
@@ -435,9 +551,9 @@ module TracWiki
       when str =~ /\A,,/
         toggle_tag 'sub', $&            # _{}
       when str =~ /\A!([^\s])/
-        @out << escape_html($1)         # !neco
+        @tree.add($1)                   # !neco
       when str =~ /./
-        @out << escape_html($&)         # ordinal char
+        @tree.add($&)                   # ordinal char
       end
       return $'
     end
@@ -460,17 +576,17 @@ module TracWiki
           next
         end
 
-        style = ''
+        style = nil
         if  txt =~ /\S(\s*)$/
               ri = $1.size
               ri += 100 if tail.empty? # do not right when last || omnited
-              style = " style='text-align:right'"  if ri == 0 && le >= 1
-              style = " style='text-align:center'" if le >= 2 && ri >= 2
+              style = 'text-align:right'  if ri == 0 && le >= 1
+              style = 'text-align:center' if le >= 2 && ri >= 2
               #print "le#{le} ri#{ri} st:#{style}\n"
         end
 
-        colspan_txt  =  colspan > 1 ? " colspan='#{colspan}'" : ''
-        start_tag(tdth, style + colspan_txt);
+        colspan =  colspan > 1 ? colspan : nil;
+        start_tag(tdth, { style:style, colspan: colspan});
         colspan = 1
 
         parse_inline(txt.strip) if txt
@@ -513,14 +629,15 @@ module TracWiki
       if @stacki.empty? || @stacki.last <  spc_size
         bullet.gsub!(/\.$/,'')
         ulol = bullet =~ /[-*]/ ? 'ul' : 'ol';
-        attr = ""
-        attr = " type='i'" if bullet =~ /i/i;
-        attr = " type='a'" if bullet =~ /a/i;
 
-        if bullet =~ /^\d+$/ && bullet != '1'
-                attr += " start='#{bullet}'"
-        end
-        start_tag(ulol, attr, spc_size)
+        type = nil
+        type = 'i' if bullet =~ /i/i;
+        type = 'a' if bullet =~ /a/i;
+
+        start = nil
+        start = bullet if bullet =~ /^\d+$/ && bullet != '1'
+
+        start_tag(ulol, {type: type, start: start}, spc_size)
       end
 
       start_tag('li')
@@ -531,7 +648,7 @@ module TracWiki
     def blockquote_level_to(level)
       cur_level = @stack.count('blockquote')
       if cur_level ==  level
-        @out << ' '
+        @tree.add(' ')
         return
       end
       while cur_level < level
@@ -547,12 +664,13 @@ module TracWiki
     def parse_block(str)
       until str.empty?
         case
-        # pre {{{ ... }}}
+        # display math $$
         when math? && str =~ /\A\$\$(.*?)\$\$/m
           end_paragraph
           nowikiblock = make_nowikiblock($1)
-          @out << "$$" << escape_html(nowikiblock) << "$$\n"
+          @tree.add("$$#{nowikiblock}$$\n")
           @was_math = true
+        # merge
         when merge? && str =~ /\A(<{7}|={7}|>{7}|\|{7}) *(\S*).*$(\r?\n)?/
           who = $2
           merge_class = case $1[0]
@@ -562,16 +680,17 @@ module TracWiki
                           when '>' ; 'merge-your'
                         end
           end_paragraph
-          @out << "<div class='merge #{merge_class}'>" << escape_html(who) << "</div>\n"
+          @tree.tag(:div, { class: "merge #{merge_class}" }, who)
+        # pre {{{ ... }}}
         when str =~ /\A\{\{\{\r?\n(.*?)\r?\n\}\}\}/m
           end_paragraph
           nowikiblock = make_nowikiblock($1)
-          @out << '<pre>' << escape_html(nowikiblock) << '</pre>'
+          @tree.tag(:pre, nowikiblock)
 
         # horizontal rule
         when str =~ /\A\s*-{4,}\s*$/
           end_paragraph
-          @out << '<hr/>'
+          @tree.tag(:hr)
 
         # heading == Wiki Ruless ==
         # heading == Wiki Ruless ==  #tag
@@ -582,9 +701,9 @@ module TracWiki
           @headings.last[:eline] = @line_no - 1
           @headings.push({ :title =>  title, :sline => @line_no, :aname => aname, :level => level, })
           end_paragraph
-          @out << make_headline(level, title, aname)
+          make_headline(level, title, aname)
 
-        # table row
+        # table row ||
         when str =~ /\A[ \t]*\|\|(.*)$(\r?\n)?/
           if !@stack.include?('table')
             end_paragraph
@@ -599,7 +718,7 @@ module TracWiki
           term = $1
           start_tag('dl')
           start_tag('dt')
-          @out << escape_html(term)
+          @tree.add(term)
           end_tag
           start_tag('dd')
 
@@ -621,7 +740,7 @@ module TracWiki
           spc_size, text =  $1.size, $2
           text.rstrip!
 
-          if @stack.include?('li') ||@stack.include?('dl')
+          if @stack.include?('li') || @stack.include?('dl')
 
             # dl, li continuation
             parse_inline(' ')
@@ -646,7 +765,6 @@ module TracWiki
       end
       end_paragraph
       @headings.last[:eline] = @line_no - 1 
-      @out
     end
 
     def aname_nice(aname, title)
@@ -667,8 +785,5 @@ module TracWiki
       @anames[aname] = true
       aname
     end
-
-
-
   end
 end
