@@ -58,7 +58,8 @@ describe TracWiki::Parser do
   it 'should be toc' do
     tc "<p>{{toc}}</p>\n", "{{toc}}"
     tc "<h2>ahoj</h2><p>{{toc}}</p>\n<h2>ahoj</h2>", "==ahoj==\n{{toc}}\n\n==ahoj==\n"
-    tc "<h2>ahoj</h2><p>{{toc}}</p>\n<h2>ahoj</h2>", "==ahoj==\r\n{{toc}}\r\n\r\n==ahoj==\r\n"
+    #tc "{{toc}}", "{{toc}}"
+    #tc "<h2>ahoj</h2>{{toc}}<h2>ahoj</h2>", "==ahoj==\r\n{{toc}}\r\n\r\n==ahoj==\r\n"
   end
 
   it 'should parse bolditalic' do
@@ -70,6 +71,7 @@ describe TracWiki::Parser do
   end
   it 'should parse monospace' do
     tc "<p>This is <tt>monospace</tt>.</p>\n", "This is {{{monospace}}}."
+    tc "<p>This is not {{{monospace}}}.</p>\n", "This is not !{{{monospace}}}."
     tc "<p>This is <tt>mon**o**space</tt>.</p>\n", "This is {{{mon**o**space}}}."
     tc "<p>This is <tt>mon&lt;o&gt;space</tt>.</p>\n", "This is {{{mon<o>space}}}."
     tc "<p>This is <tt>mon''o''space</tt>.</p>\n", "This is {{{mon''o''space}}}."
@@ -857,6 +859,26 @@ kuk
 
 eos
 
+  it 'should support macro' do
+    tc "<p>ahoj</p>\n" , "{{#echo \nahoj\n}}"
+    tc "<h2>H2</h2>" , "{{#echo == H2 ==}}"
+    tc "<h2>H2</h2>" , "{{#echo =={{#echo H2}}==}}"
+    tc "<h3 id=\"test\">H3</h3>" , "{{#echo =={{#echo =H3=}}=={{#echo #test}}}}"
+
+    tc "<p>This is correct</p>\n" , "This is {{# NOT}} correct" 
+    tc "<h1>h1</h1>" , "{{# comment }}\n= h1 =\n" 
+    tc "<h1>h1</h1>" , "{{# comment }}\n\n\n= h1 =\n" 
+    tc "<h1>h1</h1>" , "{{# comment }}\n\n\n= h1 =\n{{# Comment2}}\n" 
+
+    tc "<h1>h1</h1>" , "{{# co{{HUU}}mment }}\n\n\n= h1 =\n{{# Comment2}}\n" 
+
+    tc "<p>UMACRO(macr ahoj )</p>\n" , "{{macr\nahoj\n}}"
+    tc "<p>ahoj UMACRO(macrUMACRO(o))</p>\n" , "ahoj {{macr{{o}}}}"
+    tc "<p>ahoj UMACRO(macro)</p>\n" , "ahoj {{macro}}"
+    tc "<p>ahoj {{%macrUMACRO(o)}}</p>\n" , "ahoj {{%macr{{o}}}}"
+    tc "<p>ahoj UMACRO(macrUMACRO(mac <strong>o</strong>))</p>\n" , "ahoj {{macr{{mac **o**}}}}"
+    tc "<p>ahoj VAR($mac)</p>\n" , "ahoj {{$mac|ahoj}}"
+  end
   end
 end
 # vim: tw=0

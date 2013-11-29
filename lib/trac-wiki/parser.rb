@@ -172,7 +172,6 @@ module TracWiki
     attr_accessor :headings
     attr_writer :base
 
-
     # Disable url escaping for local links
     # Escaping: [[/Test]] --> %2FTest
     # No escaping: [[/Test]] --> Test
@@ -205,6 +204,12 @@ module TracWiki
 
     # when id_from_heading, non ascii char are transliterated to ascii
     attr_writer :id_translit
+
+    # string begins with macro
+    MACRO_BEG_REX =  /\A\{\{ ( \$\w+ | \#\w* | \w+ ) /x
+    MACRO_BEG_INSIDE_REX =  /(.*?)\{\{ ( \$\w+ | \#\w* | \w+ ) /x
+    # find end of marcro or begin of inner macro
+    MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ (\$\w+|\#\w*|\w+)  )/mx
     def id_translit?; @id_translit; end
 
     # Create a new Parser instance.
@@ -217,6 +222,9 @@ module TracWiki
       options.each_pair {|k,v| send("#{k}=", v) }
       @base += '/' if !@base.empty? && @base[-1] != '/'
     end
+
+    # th(macroname) -> template_text
+    attr_writer :template_handler
 
     @was_math = false
     def was_math?; @was_math; end
@@ -519,19 +527,18 @@ module TracWiki
       case
       when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline pre (tt)
         @tree.tag(:tt, $1)
+      when str =~ MACRO_BEG_REX                # macro  {{
+        str, lines = parse_macro($1, $')
+        return str
       when str =~ /\A`(.*?)`/                  # inline pre (tt)
         @tree.tag(:tt, $1)
-
       when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
         @tree.add("\\( #{$1} \\)")
         @was_math = true
-
       when str =~ /\A([:alpha:]|[:digit:])+/
         @tree.add($&)                      # word
       when str =~ /\A\s+/
-        # FIXME: multiple spaces
         @tree.add_spc
-        #@tree.add(' ') if @out[-1] != ?\s  # spaces
       when str =~ /\A'''''/
         toggle_tag 'strongem', $&       # bolditallic
       when str =~ /\A\*\*/ || str =~ /\A'''/
@@ -550,13 +557,91 @@ module TracWiki
         toggle_tag 'sup', $&            # ^{}
       when str =~ /\A,,/
         toggle_tag 'sub', $&            # _{}
-      when str =~ /\A!([^\s])/
-        @tree.add($1)                   # !neco
+      when str =~ /\A!(\{\{|[^\s])/
+        @tree.add($1)                   # !neco !{{
       when str =~ /./
         @tree.add($&)                   # ordinal char
       end
       return $'
     end
+
+    # r: expanded macro + rest of str, count lines taken from str
+    # sideefect: parse result of macro
+    def parse_macro(macro_name, str)
+      mac, str, lines = parse_macro_arg(macro_name, str)
+      #parse_inline(mac)
+      #@tree.add(mac)
+      return mac + str, lines
+    end
+
+    # read to args to }}  (while balancing {{ and }})
+    # ret: (arg, rest, lines)
+    # arg  -- string to }} (macros inside expanded)
+    # rest -- str aftrer }}
+    # lines -- howmany \n eaten from str (from begining to }})
+    def parse_macro_arg(macro_name, str, env = {})
+
+      lines = 0
+      arg = ''
+      # FIXME: MACRO_REX
+      #              prefix  }}...    {{macro_name
+      while str =~ MACRO_END_REX
+        prefix, bracket, sub_macro_name, str = $1, $2, $3, $'
+        arg << prefix
+        lines += prefix.count("\n")
+        if bracket == '}}'
+          #print "prefix: #{prefix}\n"
+          env = do_macro_arg_to_env(arg)
+          return do_macro(macro_name, env), str, lines
+        end
+
+        # we need to go deeper!
+        arg2, str, l = parse_macro_arg(sub_macro_name, str)
+        arg << arg2
+        lines += l
+      end
+      raise "Error parsing macro near '#{str}' (arg:#{arg}, lines=#{lines})"
+    end
+
+    # expand macro `macro_name` with `args`
+    # afer expansion all {{macros}} will be expanded recursively
+    # r: expanded string
+    def do_macro(macro_name, env)
+      return "!{{toc}}" if macro_name == 'toc'
+      return env[:arg].strip  if macro_name == '#echo'
+      return '' if macro_name == '#'
+
+      return do_macro_var(macro_name, env) if macro_name =~ /^\$/
+
+
+      if ! @template_handler.nil?
+        text = @template_text.call(macro_name, env)
+        # FIXME: melo by nahlasit jestli to chce expandovat | wiki expadnovat |raw html
+        text = do_macro_expand_result(text, env)
+        return text
+      end
+      "UMACRO(#{macro_name}#{env[:arg]})"
+    end
+
+    def do_macro_var(macro_name, env)
+      "VAR(#{macro_name})"
+    end
+
+    def do_macro_arg_to_env(arg)
+      { arg: arg }
+    end
+
+    # template expand
+    def do_macro_expand_result(text, env)
+      ret = ''
+      while text =~ MACRO_BEG_INSIDE_REX
+          prefix, macro_name2, text = $1, $2, $'
+          ret << prefix
+          args, text, lines = parse_macro_arg(macro_name2, text, env)
+      end
+      return ret + text
+    end
+
 
     def parse_table_row(str)
       start_tag('tr') if !@stack.include?('tr')
@@ -661,102 +746,124 @@ module TracWiki
       end
     end
 
+    def do_math(text)
+      end_paragraph
+      nowikiblock = make_nowikiblock(text)
+      @tree.add("$$#{nowikiblock}$$\n")
+      @was_math = true
+    end
+    def do_merge(merge_type, who)
+      merge_class = case merge_type[0]
+                      when '<' ; 'merge-mine'
+                      when '=' ; 'merge-split'
+                      when '|' ; 'merge-orig'
+                      when '>' ; 'merge-your'
+                    end
+      end_paragraph
+      @tree.tag(:div, { class: "merge #{merge_class}" }, who)
+    end
+    def do_pre(text)
+      end_paragraph
+      nowikiblock = make_nowikiblock(text)
+      @tree.tag(:pre, nowikiblock)
+    end
+    def do_hr
+      end_paragraph
+      @tree.tag(:hr)
+    end
+
+    def do_heading(level, title, aname)
+      aname= aname_nice(aname, title)
+      @headings.last[:eline] = @line_no - 1
+      @headings.push({ :title =>  title, :sline => @line_no, :aname => aname, :level => level, })
+      end_paragraph
+      make_headline(level, title, aname)
+    end
+    def do_table_row(text)
+      if !@stack.include?('table')
+        end_paragraph
+        start_tag('table')
+      end
+      parse_table_row(text)
+    end
+    def do_term(term)
+      start_tag('dl')
+      start_tag('dt')
+      @tree.add(term)
+      end_tag
+      start_tag('dd')
+    end
+
+    def do_citation(level, quote) 
+      start_paragraph if !@stack.include? 'p'
+      blockquote_level_to(level)
+      parse_inline(quote.strip)
+    end
+
+    def do_ord_line(spc_size, text)
+      text.rstrip!
+
+      if @stack.include?('li') || @stack.include?('dl')
+
+        # dl, li continuation
+        parse_inline(' ')
+        parse_inline(text)
+
+      elsif spc_size > 0
+        # quote continuation
+        start_paragraph if !@stack.include? 'p'
+        blockquote_level_to(1)
+        parse_inline(text)
+
+      else
+        # real ordinary line
+        start_paragraph
+        parse_inline(text)
+      end
+    end
+
     def parse_block(str)
+      #print "BLOCK.str(#{str})\n"
       until str.empty?
         case
+        # macro
+        when str =~ MACRO_BEG_REX
+          str, lines = parse_macro($1, $')
+          #print "MACRO.str(#{str})\n"
+          next
         # display math $$
         when math? && str =~ /\A\$\$(.*?)\$\$/m
-          end_paragraph
-          nowikiblock = make_nowikiblock($1)
-          @tree.add("$$#{nowikiblock}$$\n")
-          @was_math = true
+          do_math($1)
         # merge
         when merge? && str =~ /\A(<{7}|={7}|>{7}|\|{7}) *(\S*).*$(\r?\n)?/
-          who = $2
-          merge_class = case $1[0]
-                          when '<' ; 'merge-mine'
-                          when '=' ; 'merge-split'
-                          when '|' ; 'merge-orig'
-                          when '>' ; 'merge-your'
-                        end
-          end_paragraph
-          @tree.tag(:div, { class: "merge #{merge_class}" }, who)
+          do_merge($1, $2)
         # pre {{{ ... }}}
         when str =~ /\A\{\{\{\r?\n(.*?)\r?\n\}\}\}/m
-          end_paragraph
-          nowikiblock = make_nowikiblock($1)
-          @tree.tag(:pre, nowikiblock)
-
+          do_pre($1)
         # horizontal rule
         when str =~ /\A\s*-{4,}\s*$/
-          end_paragraph
-          @tree.tag(:hr)
-
+          do_hr()
         # heading == Wiki Ruless ==
         # heading == Wiki Ruless ==  #tag
         when str =~ /\A[[:blank:]]*(={1,6})\s*(.*?)\s*=*\s*(#(\S*))?\s*$(\r?\n)?/
-          level = $1.size
-          title= $2
-          aname= aname_nice($4, title)
-          @headings.last[:eline] = @line_no - 1
-          @headings.push({ :title =>  title, :sline => @line_no, :aname => aname, :level => level, })
-          end_paragraph
-          make_headline(level, title, aname)
-
+          do_heading($1.size, $2, $4)
         # table row ||
         when str =~ /\A[ \t]*\|\|(.*)$(\r?\n)?/
-          if !@stack.include?('table')
-            end_paragraph
-            start_tag('table')
-          end
-          parse_table_row($1)
-
+          do_table_row($1)
         # empty line
         when str =~ /\A\s*$(\r?\n)?/
           end_paragraph
         when str =~ /\A([:\w\s]+)::(\s+|\r?\n)/
-          term = $1
-          start_tag('dl')
-          start_tag('dt')
-          @tree.add(term)
-          end_tag
-          start_tag('dd')
-
+          do_term($1)
         # li
         when str =~ /\A(\s*)([*-]|[aAIi\d]\.)\s+(.*?)$(\r?\n)?/
           parse_li_line($1.size, $2, $3)
-
+        # citation
         when str =~ /\A(>[>\s]*)(.*?)$(\r?\n)?/
-          # citation
-          level, quote =  $1.count('>'), $2
-
-          start_paragraph if !@stack.include? 'p'
-          blockquote_level_to(level)
-          parse_inline(quote.strip)
-
-
+          do_citation($1.count('>'), $2)
         # ordinary line
         when str =~ /\A(\s*)(\S+.*?)$(\r?\n)?/
-          spc_size, text =  $1.size, $2
-          text.rstrip!
-
-          if @stack.include?('li') || @stack.include?('dl')
-
-            # dl, li continuation
-            parse_inline(' ')
-            parse_inline(text)
-
-          elsif spc_size > 0
-            # quote continuation
-            start_paragraph if !@stack.include? 'p'
-            blockquote_level_to(1)
-            parse_inline(text)
-
-          else
-            # real ordinary line
-            start_paragraph
-            parse_inline(text)
-          end
+          do_ord_line($1.size, $2) 
         else # case str
           raise "Parse error at #{str[0,30].inspect}"
         end
