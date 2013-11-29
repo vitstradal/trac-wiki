@@ -878,6 +878,14 @@ eos
     tc "<p>ahoj {{%macrUMACRO(o)}}</p>\n" , "ahoj {{%macr{{o}}}}"
     tc "<p>ahoj UMACRO(macrUMACRO(mac <strong>o</strong>))</p>\n" , "ahoj {{macr{{mac **o**}}}}"
     tc "<p>ahoj VAR($mac)</p>\n" , "ahoj {{$mac|ahoj}}"
+
+
+
+  end
+  it 'should do temlate' do
+    tc "<p>1WEST</p>\n", "1{{west}}"
+    tc "<p>2WEST</p>\n", "2{{test}}"
+    tc "<p>TOO_DEEP_RECURSION(<tt>{{deep}}</tt>) 3</p>\n", "{{deep}}3"
   end
   end
 end

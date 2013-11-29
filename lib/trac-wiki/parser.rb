@@ -206,8 +206,8 @@ module TracWiki
     attr_writer :id_translit
 
     # string begins with macro
-    MACRO_BEG_REX =  /\A\{\{ ( \$\w+ | \#\w* | \w+ ) /x
-    MACRO_BEG_INSIDE_REX =  /(.*?)\{\{ ( \$\w+ | \#\w* | \w+ ) /x
+    MACRO_BEG_REX =  /\A\{\{ ( [\$]?\w+ | \#\w* ) /x
+    MACRO_BEG_INSIDE_REX =  /(.*?)(?<!\{)\{\{ ( \$\w+ | \#\w* | \w+ ) /x
     # find end of marcro or begin of inner macro
     MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ (\$\w+|\#\w*|\w+)  )/mx
     def id_translit?; @id_translit; end
@@ -240,6 +240,7 @@ module TracWiki
     # #=> "<p><strong>Hello <em>World</em></strong></p>"
     def to_html
       @tree = Tree.new
+      @template_handler = proc {|tname,env| template_default(tname, env) }
       @edit_heading_class = 'editheading'
       @headings = [ {level: 0, sline: 1 } ]
       @p = false
@@ -254,6 +255,21 @@ module TracWiki
     def make_toc_html
       @tree = Tree.new
       parse_block(make_toc)
+    end
+
+    def template_default(tname, env)
+      case tname
+      when 'test'
+        "{{west}}"
+      when 'west'
+        "WEST"
+      when 'deep'
+        "{{deep}}"
+      else
+        nil
+        #"UNK_TEMPL(#{tname})"
+      end
+
     end
 
     protected
@@ -529,6 +545,7 @@ module TracWiki
         @tree.tag(:tt, $1)
       when str =~ MACRO_BEG_REX                # macro  {{
         str, lines = parse_macro($1, $')
+        #print "MACRO.inline(#{$1})"
         return str
       when str =~ /\A`(.*?)`/                  # inline pre (tt)
         @tree.tag(:tt, $1)
@@ -568,18 +585,19 @@ module TracWiki
     # r: expanded macro + rest of str, count lines taken from str
     # sideefect: parse result of macro
     def parse_macro(macro_name, str)
-      mac, str, lines = parse_macro_arg(macro_name, str)
+      mac_out, rest, lines = parse_macro_arg(macro_name, str, {})
       #parse_inline(mac)
       #@tree.add(mac)
-      return mac + str, lines
+      #print "MACOUT:'#{mac_out}'\n"
+      return mac_out + rest, lines
     end
 
     # read to args to }}  (while balancing {{ and }})
     # ret: (arg, rest, lines)
-    # arg  -- string to }} (macros inside expanded)
+    # mac_out  -- string to }} (macros inside expanded)
     # rest -- str aftrer }}
     # lines -- howmany \n eaten from str (from begining to }})
-    def parse_macro_arg(macro_name, str, env = {})
+    def parse_macro_arg(macro_name, str, env)
 
       lines = 0
       arg = ''
@@ -591,13 +609,13 @@ module TracWiki
         lines += prefix.count("\n")
         if bracket == '}}'
           #print "prefix: #{prefix}\n"
-          env = do_macro_arg_to_env(arg)
+          env = do_macro_arg_to_env(arg, env[:depth])
           return do_macro(macro_name, env), str, lines
         end
 
         # we need to go deeper!
-        arg2, str, l = parse_macro_arg(sub_macro_name, str)
-        arg << arg2
+        mac_out, str, l = parse_macro_arg(sub_macro_name, str, env)
+        arg << mac_out
         lines += l
       end
       raise "Error parsing macro near '#{str}' (arg:#{arg}, lines=#{lines})"
@@ -615,10 +633,20 @@ module TracWiki
 
 
       if ! @template_handler.nil?
-        text = @template_text.call(macro_name, env)
-        # FIXME: melo by nahlasit jestli to chce expandovat | wiki expadnovat |raw html
-        text = do_macro_expand_result(text, env)
-        return text
+        text = @template_handler.call(macro_name, env)
+        if !text.nil?
+          #print "dep:#{env[:depth]}(#{macro_name}, #{text})\n"
+          if env[:depth] > 32
+             return "TOO_DEEP_RECURSION(`#{text}`)\n"
+             #return "TOO_DEEP_RECURSION"
+          end
+          # FIXME: melo by nahlasit jestli to chce expandovat | wiki expadnovat |raw html
+          #print "temp(#{macro_name}) --> : #{text}\n"
+          text = do_macro_expand_result(text, env)
+          #print "af expand:#{text}\n"
+
+          return text
+        end
       end
       "UMACRO(#{macro_name}#{env[:arg]})"
     end
@@ -627,8 +655,8 @@ module TracWiki
       "VAR(#{macro_name})"
     end
 
-    def do_macro_arg_to_env(arg)
-      { arg: arg }
+    def do_macro_arg_to_env(arg, depth)
+      { arg: arg , depth: (depth||0) + 1  }
     end
 
     # template expand
@@ -637,7 +665,8 @@ module TracWiki
       while text =~ MACRO_BEG_INSIDE_REX
           prefix, macro_name2, text = $1, $2, $'
           ret << prefix
-          args, text, lines = parse_macro_arg(macro_name2, text, env)
+          mac_out, text, lines = parse_macro_arg(macro_name2, text, env)
+          ret << mac_out
       end
       return ret + text
     end
@@ -829,7 +858,7 @@ module TracWiki
         # macro
         when str =~ MACRO_BEG_REX
           str, lines = parse_macro($1, $')
-          #print "MACRO.str(#{str})\n"
+          #print "MACRO.block(#{$1})\n"
           next
         # display math $$
         when math? && str =~ /\A\$\$(.*?)\$\$/m
