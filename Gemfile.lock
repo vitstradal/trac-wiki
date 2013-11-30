@@ -1,0 +1,20 @@
+PATH
+  remote: .
+  specs:
+    trac-wiki (0.1.12)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    bacon (1.2.0)
+    iconv (1.0.3)
+    rake (10.0.4)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  bacon
+  iconv
+  rake
+  trac-wiki!
