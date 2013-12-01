@@ -1,3 +1,4 @@
+require 'pp'
 module TracWiki
     class Node
       attr_accessor :tag
@@ -8,6 +9,7 @@ module TracWiki
         @tag = nil
         @tag = tag_name.to_sym if tag_name
         @par = par
+        cont = [ cont ] if cont.is_a? String
         @cont = cont || []
         @attrs = attrs || {}
       end

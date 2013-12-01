@@ -4,7 +4,25 @@ require 'pp'
 
 class Bacon::Context
   def tc(html, wiki, options = {})
+    #options[:template_handler] = proc {|tname,env| template_handler(tname, env) }
+    options[:template_handler] = self.method(:template_handler)
     TracWiki.render(wiki, options).should.equal html
+  end
+
+  def template_handler(tname, env)
+    case tname
+    when 'test'
+      "{{west}}"
+    when 'west'
+      "WEST"
+    when 'deep'
+      "{{deep}}"
+    when 'wide'
+      "0123456789{{wide}}" * 10
+    else
+      nil
+      #"UNK_TEMPL(#{tname})"
+    end
   end
   def  h(hash, wiki, opts = {})
     parser = TracWiki.parser(wiki, opts)
@@ -859,6 +877,7 @@ kuk
 
 eos
 
+
   it 'should support macro' do
     tc "<p>ahoj</p>\n" , "{{#echo \nahoj\n}}"
     tc "<h2>H2</h2>" , "{{#echo == H2 ==}}"
@@ -878,14 +897,18 @@ eos
     tc "<p>ahoj {{%macrUMACRO(o)}}</p>\n" , "ahoj {{%macr{{o}}}}"
     tc "<p>ahoj UMACRO(macrUMACRO(mac <strong>o</strong>))</p>\n" , "ahoj {{macr{{mac **o**}}}}"
     tc "<p>ahoj VAR($mac)</p>\n" , "ahoj {{$mac|ahoj}}"
-
-
-
   end
+
   it 'should do temlate' do
     tc "<p>1WEST</p>\n", "1{{west}}"
     tc "<p>2WEST</p>\n", "2{{test}}"
+
+    # macro errors:
     tc "<p>TOO_DEEP_RECURSION(<tt>{{deep}}</tt>) 3</p>\n", "{{deep}}3"
+    tc "<p>TOO_LONG_EXPANSION_OF_MACRO(wide)QUIT</p>\n", "{{wide}}3"
+  end
+  it 'should support options' do
+    tc "<h3>h1<a class=\"editheading\" href=\"?edit=1\">edit</a></h3>", "=== h1 ==", edit_heading: true
   end
   end
 end

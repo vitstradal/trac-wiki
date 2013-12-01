@@ -1,4 +1,5 @@
 require 'trac-wiki/parser'
+require 'trac-wiki/tree'
 require 'trac-wiki/version'
 
 module TracWiki
