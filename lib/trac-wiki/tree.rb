@@ -1,5 +1,16 @@
 require 'pp'
+require 'sanitize'
 module TracWiki
+
+    class RawHtml
+      def initialize(text)
+        @text = text
+      end
+      def to_s
+        @text
+      end
+    end
+
     class Node
       attr_accessor :tag
       attr_accessor :par
@@ -68,6 +79,12 @@ module TracWiki
         self
       end
 
+      def add_raw(cont)
+        cont_san = Sanitize.clean(cont, san_conf)
+        @cur.add(RawHtml.new(cont_san))
+        self
+      end
+
 
      def find_par(tag_name, node = nil)
        node = @cur if node.nil?
@@ -105,12 +122,12 @@ module TracWiki
      end
 
      def cont_to_s(cont)
-       if cont.is_a? String
-         return cont.to_s
-       end
+       cont = [cont] if cont.is_a? String
        cont.map do |c|
           if c.is_a? Node
              tree_to_html(c)
+          elsif c.is_a? RawHtml
+             c.to_s
           else
              TracWiki::Parser.escapeHTML(c.to_s)
           end
@@ -124,6 +141,22 @@ module TracWiki
          ret.push "#{TracWiki::Parser.escapeHTML(k.to_s)}=\"#{TracWiki::Parser.escapeHTML(v.to_s)}\"" if !v.nil?
        end
        return ret.sort.join(' ')
+     end
+
+     def san_conf
+        return @san_conf if @san_conf
+        conf = { elements:   ['form', 'input'],
+                 attributes: { 'form'  =>  ['action', 'meth'],
+                               'input' =>  ['type', 'value'],
+                             },
+               }
+                   
+        @san_conf = conf.merge(Sanitize::Config::RELAXED){|k,o,n| o.is_a?(Hash) ? o.merge(n) :
+                                                                  o.is_a?(Array) ? o + n :
+                                                                  n }
+
+        #pp @san_conf
+        @san_conf
      end
     end
 end

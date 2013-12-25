@@ -906,9 +906,18 @@ eos
     # macro errors:
     tc "<p>TOO_DEEP_RECURSION(<tt>{{deep}}</tt>) 3</p>\n", "{{deep}}3"
     tc "<p>TOO_LONG_EXPANSION_OF_MACRO(wide)QUIT</p>\n", "{{wide}}3"
+    tc "<p>UMACRO(unknown)3</p>\n", "{{unknown}}3"
   end
   it 'should support options' do
     tc "<h3>h1<a class=\"editheading\" href=\"?edit=1\">edit</a></h3>", "=== h1 ==", edit_heading: true
+  end
+  it 'should not html' do
+    tc "<p>{{{! &lt;a&gt;&lt;/a&gt; }}}</p>\n", "{{{!\n<a></a>\n}}}\n"
+    tc '<a></a>', "{{{!\n<a></a>\n}}}\n", raw_html: true
+    tc '<a></a>', "{{{!\n<a></a>\n}}}\n", raw_html: true
+    tc "<form meth=\"POST\" action=\"http://www.example.com\"><input type=\"hidden\" value=\"VAL\"></form>",
+       "{{{!\n<form meth=\"POST\" action=\"http://www.example.com\"><input type=\"hidden\" value=\"VAL\"/></form>\n}}}\n", raw_html: true
+    tc 'alert(444);', "{{{!\n<script>alert(444);</script>\n}}}\n", raw_html: true
   end
   end
 end

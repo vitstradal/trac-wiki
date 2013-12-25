@@ -61,6 +61,9 @@ module TracWiki
     attr_writer :math
     def math?; @math; end
 
+    attr_writer :raw_html
+    def raw_html?; @raw_html; end
+
     attr_writer :edit_heading
     def edit_heading?; @edit_heading; end
 
@@ -129,6 +132,7 @@ module TracWiki
     def make_toc_html
       @tree = TracWiki::Tree.new
       parse_block(make_toc)
+      @tree.to_html
     end
 
     protected
@@ -640,8 +644,7 @@ module TracWiki
 
     def do_math(text)
       end_paragraph
-      nowikiblock = make_nowikiblock(text)
-      @tree.add("$$#{nowikiblock}$$\n")
+      @tree.add("$$#{text}$$\n")
       @was_math = true
     end
     def do_merge(merge_type, who)
@@ -659,6 +662,12 @@ module TracWiki
       nowikiblock = make_nowikiblock(text)
       @tree.tag(:pre, nowikiblock)
     end
+
+    def do_raw_html(text)
+      end_paragraph
+      @tree.add_raw(text)
+    end
+
     def do_hr
       end_paragraph
       @tree.tag(:hr)
@@ -729,6 +738,9 @@ module TracWiki
         # merge
         when merge? && str =~ /\A(<{7}|={7}|>{7}|\|{7}) *(\S*).*$(\r?\n)?/
           do_merge($1, $2)
+        # raw_html {{{! ... }}}
+        when raw_html? && str =~ /\A\{\{\{!\r?\n(.*?)\r?\n\}\}\}/m
+          do_raw_html($1)
         # pre {{{ ... }}}
         when str =~ /\A\{\{\{\r?\n(.*?)\r?\n\}\}\}/m
           do_pre($1)
