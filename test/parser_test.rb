@@ -1,16 +1,26 @@
+# encoding: UTF-8
 require 'trac-wiki'
 require 'pp'
 
 
 class Bacon::Context
   def tc(html, wiki, options = {})
-    #options[:template_handler] = proc {|tname,env| template_handler(tname, env) }
+    options[:plugins] = { '!print' => proc { |env| env['1'] + '!' },
+                          '!html' => proc { |env| "\n\n{{{!\nhtml(#{env['arg']})\n}}}\n" },
+                        }
+
     options[:template_handler] = self.method(:template_handler)
-    TracWiki.render(wiki, options).should.equal html
+
+    parser = TracWiki.parser(wiki, options)
+    parser.to_html.should.equal html
   end
 
   def template_handler(tname, env)
     case tname
+    when 'vartest2'
+      "{{vartest {{$1}}|{{$dva}}|p={{$p}}|{{$3   |tridef}}}}"
+    when 'vartest'
+      "jedna:{{$1}},dve:{{$2}},p:{{$p}},arg:{{$arg}}"
     when 'test'
       "{{west}}"
     when 'west'
@@ -169,6 +179,7 @@ describe TracWiki::Parser do
     tc "<h1>Heading 1</h1>", "= Heading 1 ="
     tc "<h2>Heading 2</h2>", "== Heading 2 =="
     tc "<h3>Heading 3</h3>", "=== Heading 3 ==="
+    tc "<h3>Heading 3\u00a0B</h3>", "=== Heading 3~B ==="
     tc "<h3 id=\"HE3\">Heading 3</h3>", "=== Heading 3 === #HE3"
     tc "<h3 id=\"Heading-3\">Heading 3</h3>", "=== Heading 3 === #Heading-3"
     tc "<h3 id=\"Heading/3\">Heading 3</h3>", "=== Heading 3 === #Heading/3"
@@ -534,7 +545,7 @@ describe TracWiki::Parser do
     tc "<p>// Not Italic //</p>\n", "!// Not Italic !//"
     tc "<p>* Not Bullet</p>\n", "!* Not Bullet"
     # Following char is not a blank (space or line feed)
-    tc "<p>Hello ~ world</p>\n", "Hello ~ world\n"
+    tc "<p>Hello \u00a0 world</p>\n", "Hello ~ world\n"
     tc "<p>Hello ! world</p>\n", "Hello ! world\n"
     tc "<p>Hello ! world</p>\n", "Hello ! world\n"
     tc "<p>Hello ! world</p>\n", "Hello !\nworld\n"
@@ -891,12 +902,12 @@ eos
 
     tc "<h1>h1</h1>" , "{{# co{{HUU}}mment }}\n\n\n= h1 =\n{{# Comment2}}\n" 
 
-    tc "<p>UMACRO(macr ahoj )</p>\n" , "{{macr\nahoj\n}}"
-    tc "<p>ahoj UMACRO(macrUMACRO(o))</p>\n" , "ahoj {{macr{{o}}}}"
-    tc "<p>ahoj UMACRO(macro)</p>\n" , "ahoj {{macro}}"
-    tc "<p>ahoj {{%macrUMACRO(o)}}</p>\n" , "ahoj {{%macr{{o}}}}"
-    tc "<p>ahoj UMACRO(macrUMACRO(mac <strong>o</strong>))</p>\n" , "ahoj {{macr{{mac **o**}}}}"
-    tc "<p>ahoj VAR($mac)</p>\n" , "ahoj {{$mac|ahoj}}"
+    tc "<p>UMACRO(macr|ahoj )</p>\n" , "{{macr\nahoj\n}}"
+    tc "<p>ahoj UMACRO(macr|UMACRO(o|))</p>\n" , "ahoj {{macr{{o}}}}"
+    tc "<p>ahoj UMACRO(macro|)</p>\n" , "ahoj {{macro}}"
+    tc "<p>ahoj {{%macrUMACRO(o|)}}</p>\n" , "ahoj {{%macr{{o}}}}"
+    tc "<p>ahoj UMACRO(macr|UMACRO(mac|<strong>o</strong>))</p>\n" , "ahoj {{macr{{mac **o**}}}}"
+    tc "<p>ahoj ahoj</p>\n" , "ahoj {{$mac|ahoj}}"
   end
 
   it 'should do temlate' do
@@ -906,19 +917,37 @@ eos
     # macro errors:
     tc "<p>TOO_DEEP_RECURSION(<tt>{{deep}}</tt>) 3</p>\n", "{{deep}}3"
     tc "<p>TOO_LONG_EXPANSION_OF_MACRO(wide)QUIT</p>\n", "{{wide}}3"
-    tc "<p>UMACRO(unknown)3</p>\n", "{{unknown}}3"
+    tc "<p>UMACRO(unknown|)3</p>\n", "{{unknown}}3"
+  end
+  it 'should do temlate with args' do
+    tc "<p>jedna:VARTESTPARAM,dve:,p:DVE,arg:VARTESTPARAM|p=DVE</p>\n", "{{vartest VARTESTPARAM|p=DVE}}"
+    tc "<p>jedna:VARTESTPARAM,dve:TRI,p:DVE,arg:VARTESTPARAM|p=DVE|TRI</p>\n", "{{vartest VARTESTPARAM|p=DVE|TRI}}"
+    tc "<p>jedna:VARTESTPARAM,dve:TRI,p:DVE,arg:VARTESTPARAM|TRI|p=DVE|tridef</p>\n", "{{vartest2 VARTESTPARAM|p=DVE|dva=TRI}}"
+    tc "<p>ahoj |</p>\n", "ahoj {{!}}"
+    #FIXME: should be: '... jedna:be||no to be,dve: ..'
+    tc "<p>jedna:be,dve:,p:,arg:be||not to be</p>\n", "{{vartest be{{!}}{{!}}not to be}}"
   end
   it 'should support options' do
     tc "<h3>h1<a class=\"editheading\" href=\"?edit=1\">edit</a></h3>", "=== h1 ==", edit_heading: true
   end
   it 'should not html' do
-    tc "<p>{{{! &lt;a&gt;&lt;/a&gt; }}}</p>\n", "{{{!\n<a></a>\n}}}\n"
+    #tc "<p>{{{! &lt;a&gt;&lt;/a&gt; }}}</p>\n", "{{{!\n<a></a>\n}}}\n"
     tc '<a></a>', "{{{!\n<a></a>\n}}}\n", raw_html: true
     tc '<a></a>', "{{{!\n<a></a>\n}}}\n", raw_html: true
     tc "<form meth=\"POST\" action=\"http://www.example.com\"><input type=\"hidden\" value=\"VAL\"></form>",
        "{{{!\n<form meth=\"POST\" action=\"http://www.example.com\"><input type=\"hidden\" value=\"VAL\"/></form>\n}}}\n", raw_html: true
     tc 'alert(444);', "{{{!\n<script>alert(444);</script>\n}}}\n", raw_html: true
   end
+  it 'should entity' do
+    tc "<p>\u00a0</p>\n", "&nbsp;"
+    tc "<p>„text“</p>\n", "&bdquo;text&ldquo;"
+  end
+  it 'should plugin' do
+    tc "<p>AHOJTE!</p>\n", "{{!print AHOJTE}}"
+    tc "html(<p><b>T</b>E</p>)", "{{!html <p><b>T</b>E</p>}}\n", raw_html: true
+    tc "html(alert(666))", "{{!html <script>alert(666)</script>}}", raw_html: true
+  end
+
   end
 end
 # vim: tw=0

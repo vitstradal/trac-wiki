@@ -38,6 +38,8 @@ require 'iconv'
 # Inherit this to provide custom handling of links. The overrideable
 # methods are: make_local_link
 module TracWiki
+  class TooLongException < Exception
+  end
   class Parser
 
     # Allowed url schemes
@@ -61,6 +63,9 @@ module TracWiki
     attr_writer :math
     def math?; @math; end
 
+    # allow {{{! ... html ... }}}
+    # html will be sanitized
+    # {{{!\n html here  \n}}}\n
     attr_writer :raw_html
     def raw_html?; @raw_html; end
 
@@ -82,16 +87,19 @@ module TracWiki
 
     # when id_from_heading, non ascii char are transliterated to ascii
     attr_writer :id_translit
+    attr_writer :plugins
+    @plugins = {}
 
     # string begins with macro
-    MACRO_BEG_REX =  /\A\{\{ ( [\$]?\w+ | \#\w* ) /x
-    MACRO_BEG_INSIDE_REX =  /(.*?)(?<!\{)\{\{ ( \$\w+ | \#\w* | \w+ ) /x
+    MACRO_BEG_REX =  /\A\{\{ ( \$\w+ | [\#!]\w* |\w+ ) /x
+    MACRO_BEG_INSIDE_REX =  /(.*?)(?<!\{)\{\{ ( \$\w+ | [\#!]\w* | \w+ ) /x
     # find end of marcro or begin of inner macro
-    MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ (\$\w+|\#\w*|\w+)  )/mx
+    MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ ( \$\w+| [\#!]\w* | \w+)  )/mx
     def id_translit?; @id_translit; end
 
     # Create a new Parser instance.
     def initialize(text, options = {})
+      @plugins = {}
       @allowed_schemes = %w(http https ftp ftps)
       @anames = {}
       @text = text
@@ -133,6 +141,10 @@ module TracWiki
       @tree = TracWiki::Tree.new
       parse_block(make_toc)
       @tree.to_html
+    end
+
+    def add_plugin(name, &block)
+        @plugins[name] = block
     end
 
     protected
@@ -303,7 +315,8 @@ module TracWiki
 
       hN = "h#{level}".to_sym
 
-      @tree.tag_beg(hN, { id: aname } , text)
+      @tree.tag_beg(hN, { id: aname } )
+      parse_inline(text)
       if edit_heading?
         edit_heading_link(@headings.size - 1)
       end
@@ -406,14 +419,19 @@ module TracWiki
       when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline pre (tt)
         @tree.tag(:tt, $1)
       when str =~ MACRO_BEG_REX                # macro  {{
-        str, lines = parse_macro($1, $')
         #print "MACRO.inline(#{$1})"
+        str, lines = parse_macro($1, $')
         return str
       when str =~ /\A`(.*?)`/                  # inline pre (tt)
         @tree.tag(:tt, $1)
       when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
         @tree.add("\\( #{$1} \\)")
+        #@tree.add("$#{$1}$")
+        #@tree.tag(:span, {class:'math'},  $1)
         @was_math = true
+      when str =~ /\A(\&\w*;)/       # html entity 
+        #print "add html ent: #{$1}\n"
+        @tree.add_raw($1)
       when str =~ /\A([:alpha:]|[:digit:])+/
         @tree.add($&)                      # word
       when str =~ /\A\s+/
@@ -430,6 +448,8 @@ module TracWiki
         toggle_tag 'u', $&              # underline
       when str =~ /\A~~/
         toggle_tag 'del', $&            # delete
+      when str =~ /\A~/
+        @tree.add_raw('&nbsp;')         # tilde
 #      when /\A\+\+/
 #        toggle_tag 'ins', $&           # insert
       when str =~ /\A\^/
@@ -453,8 +473,10 @@ module TracWiki
         #@tree.add(mac)
         #print "MACOUT:'#{mac_out}'\n"
         return mac_out + rest, lines
-      rescue  Exception => a
-        return "TOO_LONG_EXPANSION_OF_MACRO(#{macro_name})QUIT"
+      rescue  TooLongException => e
+        #print "ex:" + e.message + ")\n"
+        #print "ex:" + e.backtrace.inspect  + ")\n"
+        return "TOO_LONG_EXPANSION_OF_MACRO(#{macro_name})QUIT", 0
       end
     end
 
@@ -464,7 +486,11 @@ module TracWiki
     # rest -- str aftrer }}
     # lines -- howmany \n eaten from str (from begining to }})
     def parse_macro_arg(macro_name, str, env)
+      #print "env:"
+      #pp(env)
+      str_orig = str
 
+      #print "parsing macro(#{macro_name}) str '#{str}'\n"
       lines = 0
       arg = ''
       # FIXME: MACRO_REX
@@ -475,8 +501,8 @@ module TracWiki
         lines += prefix.count("\n")
         if bracket == '}}'
           #print "prefix: #{prefix}\n"
-          env = do_macro_arg_to_env(arg, env[:depth])
-          return do_macro(macro_name, env), str, lines
+          return do_macro_var($1, arg, env), str, lines if macro_name =~ /^\$(.*)/
+          return do_macro(macro_name, arg, env), str, lines
         end
 
         # we need to go deeper!
@@ -484,19 +510,22 @@ module TracWiki
         arg << mac_out
         lines += l
       end
+      print "Error parsing macro(#{macro_name}) near '#{str}'(#{str_orig}) (arg:#{arg}, lines=#{lines})\n"
       raise "Error parsing macro near '#{str}' (arg:#{arg}, lines=#{lines})"
     end
 
     # expand macro `macro_name` with `args`
     # afer expansion all {{macros}} will be expanded recursively
     # r: expanded string
-    def do_macro(macro_name, env)
+    def do_macro(macro_name, arg, env)
       return "!{{toc}}" if macro_name == 'toc'
-      return env[:arg].strip  if macro_name == '#echo'
+      return arg.strip  if macro_name == '#echo'
+      return '|' if macro_name == '!'
       return '' if macro_name == '#'
 
-      return do_macro_var(macro_name, env) if macro_name =~ /^\$/
+      env = do_macro_arg_to_env(arg, env[:depth])
 
+      return do_macro_cmd(macro_name, env) if macro_name =~ /^\!/
 
       if ! @template_handler.nil?
         text = @template_handler.call(macro_name, env)
@@ -514,15 +543,44 @@ module TracWiki
           return text
         end
       end
-      "UMACRO(#{macro_name}#{env[:arg]})"
+      "UMACRO(#{macro_name}|#{arg})"
     end
 
-    def do_macro_var(macro_name, env)
-      "VAR(#{macro_name})"
+    def do_macro_var(var_name, arg, env)
+      #print "var(var_name:#{var_name}, arg:#{arg}, env:"
+      #pp(env)
+      ret = ''
+      if env.key? var_name
+        ret = env[var_name]
+      else
+        ret = arg.sub(/\A\s*\|?/, '')
+      end
+      #print "varret: '#{ret}'\n"
+      return ret
     end
+
 
     def do_macro_arg_to_env(arg, depth)
-      { arg: arg , depth: (depth||0) + 1  }
+      arg.sub!(/\A\s*\/?/, '')
+      env  = { 'arg' => arg , depth: (depth||0) + 1  }
+      idx = 1
+      arg.split(/\|/).each do |val|
+        if val =~ /\A\s*(\w+)\s*=\s*(.*)/s
+          env[$1] = $2
+        else
+          env[idx.to_s] = val
+          idx+=1
+        end
+      end
+      return env
+    end
+
+    def do_macro_cmd(macro_name, env)
+      if @plugins.key?(macro_name)
+        ret = @plugins[macro_name].call(env, macro_name)
+        return ret
+      end
+      "UCM(#{macro_name}|#{env['arg']})"
     end
 
     # template expand
@@ -533,8 +591,11 @@ module TracWiki
           ret << prefix
           mac_out, text, lines = parse_macro_arg(macro_name2, text, env)
           ret << mac_out
-          raise "Too long macro expadion" if ret.size > 1_000_000
+          #print "Too long macro expadion" if ret.size > 1_000_000
+          raise TooLongException if ret.size > 1_000_000
       end
+      #print "text: #{text.nil?}\n"
+      #print "ret: #{ret.nil?}\n"
       return ret + text
     end
 
@@ -729,8 +790,9 @@ module TracWiki
         case
         # macro
         when str =~ MACRO_BEG_REX
-          str, lines = parse_macro($1, $')
           #print "MACRO.block(#{$1})\n"
+          str, lines = parse_macro($1, $')
+          @line_no += lines
           next
         # display math $$
         when math? && str =~ /\A\$\$(.*?)\$\$/m

@@ -1,3 +1,5 @@
+# encoding: UTF-8
+
 require 'trac-wiki'
 require 'pp'
 
@@ -18,8 +20,14 @@ describe TracWiki::Parser do
    t.tag_end(:body)
    t.tag_end(:html)
    t.add('\bye')
+   t.add_raw('&gt;')
+   t.add_raw('&nbsp;')
+   t.add_raw('&bdquo;')
 
    res =  "<html><body hus=\"JAN\"><div ahoj=\"ahoj\" bhoj=\"BHOJ\"/>\n<br/>bye bye bye</body></html>\\bye"
+   res += "&gt;"
+   res += "\u00a0"
+   res += "„"
 
    #print "\n#{t.to_html}\n#{res}"
    t.to_html.should.equal res
