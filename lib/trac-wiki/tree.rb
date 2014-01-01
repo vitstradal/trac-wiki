@@ -145,9 +145,11 @@ module TracWiki
 
      def san_conf
         return @san_conf if @san_conf
-        conf = { elements:   ['form', 'input'],
+        conf = { elements:   ['form', 'input', 'span', 'div'],
                  attributes: { 'form'  =>  ['action', 'meth'],
                                'input' =>  ['type', 'value'],
+                               'span'  =>  ['class'],
+                               'div'   =>  ['class'],
                              },
                }
                    

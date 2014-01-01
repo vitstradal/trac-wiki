@@ -5,10 +5,8 @@ require 'pp'
 
 class Bacon::Context
   def tc(html, wiki, options = {})
-    options[:plugins] = { '!print' => proc { |env| env['1'] + '!' },
-                          '!html' => proc { |env| "\n\n{{{!\nhtml(#{env['arg']})\n}}}\n" },
+    options[:plugins] = { '!print' => proc { |env| env.arg(0) + '! ' }, 
                         }
-
     options[:template_handler] = self.method(:template_handler)
 
     parser = TracWiki.parser(wiki, options)
@@ -17,8 +15,14 @@ class Bacon::Context
 
   def template_handler(tname, env)
     case tname
+    when 'ifeqtest'
+      "{{!ifeq {{$1}}|{{$2}}|TRUE|FALSE}}"
     when 'vartest2'
       "{{vartest {{$1}}|{{$dva}}|p={{$p}}|{{$3   |tridef}}}}"
+    when 'ytest'
+      "{{$y.ahoj}},{{$y.bhoj.1}}"
+    when 'ytest2'
+      "{{!set i|ahoj}}{{$y.$i}},{{$y.bhoj.1}}"
     when 'vartest'
       "jedna:{{$1}},dve:{{$2}},p:{{$p}},arg:{{$arg}}"
     when 'test'
@@ -944,8 +948,37 @@ eos
   end
   it 'should plugin' do
     tc "<p>AHOJTE!</p>\n", "{{!print AHOJTE}}"
-    tc "html(<p><b>T</b>E</p>)", "{{!html <p><b>T</b>E</p>}}\n", raw_html: true
-    tc "html(alert(666))", "{{!html <script>alert(666)</script>}}", raw_html: true
+    tc "<p>test:AHOJTE! AHOJTE! </p>\n", "test:{{!print AHOJTE}}{{!print AHOJTE}}"
+    tc "<p>FALSE</p>\n", "{{ifeqtest JEDNA|DVE}}"
+    tc "<p>TRUE</p>\n", "{{ifeqtest JEDNA|JEDNA}}"
+    tc "<p>AHOJ</p>\n", "{{!set ahoj|AHOJ}}{{$ahoj}}"
+    tc "<p>BHOJ</p>\n", "{{!ifeq a|b|{{!set ahoj|AHOJ}}|{{!set ahoj|BHOJ}}}}{{$ahoj}}"
+    tc "<p>AHOJ</p>\n", "{{!ifeq a|a|{{!set ahoj|AHOJ}}|{{!set ahoj|BHOJ}}}}{{$ahoj}}"
+    tc "<p>TRUE</p>\n", "{{!set a|a}}{{!ifeq {{$a}}|a|TRUE|FALSE}}"
+    tc "<p>FALSE</p>\n", "{{!set a|a}}{{!ifeq {{$a}}|b|TRUE|FALSE}}"
+    tc "<p>,AHOJ! ,FALSE</p>\n", "{{!set a|a}},{{!print AHOJ}},{{!ifeq {{$a}}|b|TRUE|FALSE}}"
+    tc "", "{{!ifeq a|b|TRUE}}"
+    tc "<p>AHOJ,dve</p>\n", "{{ytest \nahoj: AHOJ\nbhoj: [ jedna, dve ]\n}}"
+    tc "<p>,malo</p>\n", "{{!yset ahoj|data: [1,2]\ndesc: malo}},{{$ahoj.desc}}"
+    tc "<p>,BETA</p>\n", "{{!yset ahoj|data: [ALFA,BETA]\ndesc: malo}},{{$ahoj.data.1}}"
+    tc "<p>,GAMA</p>\n", "{{!yset ahoj|data: [ALFA,BETA]\ndesc: malo}},{{!set ahoj.data.3|GAMA}}{{$ahoj.data.3}}"
+    tc "<p>,2</p>\n", "{{!yset ahoj|data: [1,2]\ndesc: malo}},{{$ahoj.data.1}}"
+    tc "<p>AHOJ,dve</p>\n", "{{ytest2 \nahoj: AHOJ\nbhoj: [ jedna, dve ]\n}}"
+    tc "<p>,,BHOJ</p>\n", "{{!set ahoj|AHOJ}},{{!set AHOJ|BHOJ}},{{$$ahoj}}"
+    tc "<p>(0),(1),(2),</p>\n", "{{!for i|3|({{$i}}),}}", raw_html: true
+    tc "<p>(0),(1),(2),(3),</p>\n", "{{!for i|4|({{$i}}),}}", raw_html: true
+    tc "<p>,(ALFA),(BETA),</p>\n", "{{!yset data|[ALFA,BETA]}},{{!for i|data|({{$data.$i}}),}}"
+    tc "<p>,(1),(2),</p>\n", "{{!yset data|[1,2]}},{{!for i|data|({{$data.$i}}),}}"
+    tc "<p>,(alfa:ALFA),(beta:BETA),</p>\n", "{{!yset data|beta: BETA\nalfa: ALFA\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
+  end
+
+  it 'should {{!html}}' do
+    tc "alert(666)", "{{!html <script>alert(666)</script>}}", raw_html: true
+    tc "<p><b>T</b>E</p>", "{{!html <p><b>T</b>E</p>}}\n", raw_html: true
+    tc "<span>Span</span>", "{{!html <span>Span</span>}}\n", raw_html: true
+    #tc "<span>Span</span>", "**{{!html <span>Span</span>}}**\n", raw_html: true
+    tc "<div class=\"ahoj\">Div</div>", "{{!html <div class=\"ahoj\">Div</div>}}\n", raw_html: true
+    tc "<span>Span</span><span>Span</span>", "{{!html <span>Span</span>}}{{!html <span>Span</span>}}\n", raw_html: true
   end
 
   end
