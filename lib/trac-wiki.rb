@@ -1,6 +1,7 @@
 require 'trac-wiki/parser'
 require 'trac-wiki/tree'
 require 'trac-wiki/version'
+require 'trac-wiki/env'
 
 module TracWiki
   # Convert the argument in Trac format to HTML and return the

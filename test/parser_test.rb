@@ -587,6 +587,8 @@ describe TracWiki::Parser do
 
   it 'should parse table' do
     tc "<table><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||World!||"
+    tc "<table><tr><td>Hello</td><td>World!</td></tr><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||World!||\n||Hello||World!||\n\n"
+    tc "<table><tr><td>Hello</td><td>World!</td></tr><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||World!||\r\n||Hello||World!||\r\n\n"
     tc "<table><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||\\\n||World!||"
     tc "<table><tr><td>He</td><td>llo</td><td>World!</td></tr></table>", "||He||llo||\\\n||World!||"
     tc "<table><tr><td>Hello</td><td colspan=\"2\">World!</td></tr></table>", "||Hello||||World!||"
@@ -970,6 +972,11 @@ eos
     tc "<p>,(ALFA),(BETA),</p>\n", "{{!yset data|[ALFA,BETA]}},{{!for i|data|({{$data.$i}}),}}"
     tc "<p>,(1),(2),</p>\n", "{{!yset data|[1,2]}},{{!for i|data|({{$data.$i}}),}}"
     tc "<p>,(alfa:ALFA),(beta:BETA),</p>\n", "{{!yset data|beta: BETA\nalfa: ALFA\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
+
+    tc "<p>,FALSE</p>\n", "{{!yset data|[1,2]}},{{!ifdef data.55|TRUE|FALSE}}"
+    tc "<p>,TRUE</p>\n", "{{!yset data|[1,2]}},{{!ifdef data.1|TRUE|FALSE}}"
+    tc "<p>,TRUE</p>\n", "{{!yset data|{a: 1, b: 2} }},{{!ifdef data.a|TRUE|FALSE}}"
+    tc "<p>,FALSE</p>\n", "{{!yset data|{a: 1, b: 2} }},{{!ifdef data.q|TRUE|FALSE}}"
   end
 
   it 'should {{!html}}' do
