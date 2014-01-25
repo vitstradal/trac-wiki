@@ -59,7 +59,7 @@ module TracWiki
       lines = 0
       args = ['']
       while str =~ /{{|}}|\|/
-        prefix, match  = $`, $&
+        prefix, match, str  = $`, $&, $'
         args[-1] += prefix
         lines += prefix.count("\n")
         if match == '{{'
@@ -67,14 +67,13 @@ module TracWiki
           args[-1]  += $&
         elsif match == '}}'
           dep -= 1
-          return do_macro_cmd(macro_name, args), $', lines if dep < 0
+          return do_macro_cmd(macro_name, args), str, lines if dep < 0
           args[-1]  += $&
         elsif match == '|' && dep == 0
           args.push('')
         else
           args[-1]  += $&
         end
-        str = $'
       end
       raise "eol in parsing macro params"
     end
@@ -194,7 +193,9 @@ module TracWiki
           end
           # FIXME: melo by nahlasit jestli to chce expandovat | wiki expadnovat |raw html
           #print "temp(#{macro_name}) --> : #{str}\n"
+          #print "bf ex: [#{str}]\n"
           str = env.expand(str)
+          #print "af ex: [#{str}]\n"
           return str
         end
       end
@@ -231,6 +232,9 @@ module TracWiki
       expand(@env['args'][idx])
     end
 
+    def pp_env
+      pp(@env)
+    end
     def expand(str)
       ret = ''
       return '' if str.nil?

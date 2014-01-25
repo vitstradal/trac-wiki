@@ -183,7 +183,8 @@ describe TracWiki::Parser do
     tc "<h1>Heading 1</h1>", "= Heading 1 ="
     tc "<h2>Heading 2</h2>", "== Heading 2 =="
     tc "<h3>Heading 3</h3>", "=== Heading 3 ==="
-    tc "<h3>Heading 3\u00a0B</h3>", "=== Heading 3~B ==="
+    #tc "<h3>Heading 3\u00a0B</h3>", "=== Heading 3~B ==="
+    tc "<h3>Heading 3&nbsp;B</h3>", "=== Heading 3~B ==="
     tc "<h3 id=\"HE3\">Heading 3</h3>", "=== Heading 3 === #HE3"
     tc "<h3 id=\"Heading-3\">Heading 3</h3>", "=== Heading 3 === #Heading-3"
     tc "<h3 id=\"Heading/3\">Heading 3</h3>", "=== Heading 3 === #Heading/3"
@@ -549,7 +550,8 @@ describe TracWiki::Parser do
     tc "<p>// Not Italic //</p>\n", "!// Not Italic !//"
     tc "<p>* Not Bullet</p>\n", "!* Not Bullet"
     # Following char is not a blank (space or line feed)
-    tc "<p>Hello \u00a0 world</p>\n", "Hello ~ world\n"
+    #tc "<p>Hello \u00a0 world</p>\n", "Hello ~ world\n"
+    tc "<p>Hello &nbsp; world</p>\n", "Hello ~ world\n"
     tc "<p>Hello ! world</p>\n", "Hello ! world\n"
     tc "<p>Hello ! world</p>\n", "Hello ! world\n"
     tc "<p>Hello ! world</p>\n", "Hello !\nworld\n"
@@ -937,16 +939,14 @@ eos
     tc "<h3>h1<a class=\"editheading\" href=\"?edit=1\">edit</a></h3>", "=== h1 ==", edit_heading: true
   end
   it 'should not html' do
-    #tc "<p>{{{! &lt;a&gt;&lt;/a&gt; }}}</p>\n", "{{{!\n<a></a>\n}}}\n"
-    tc '<a></a>', "{{{!\n<a></a>\n}}}\n", raw_html: true
-    tc '<a></a>', "{{{!\n<a></a>\n}}}\n", raw_html: true
-    tc "<form meth=\"POST\" action=\"http://www.example.com\"><input type=\"hidden\" value=\"VAL\"></form>",
-       "{{{!\n<form meth=\"POST\" action=\"http://www.example.com\"><input type=\"hidden\" value=\"VAL\"/></form>\n}}}\n", raw_html: true
-    tc 'alert(444);', "{{{!\n<script>alert(444);</script>\n}}}\n", raw_html: true
+    tc "<p>&lt;b&gt;&lt;/b&gt;</p>\n", "<b></b>\n"
+    tc "<p>&lt;div&gt;&lt;script&gt;alert(666)&lt;/script&gt;&lt;/div&gt;</p>\n", "<div><script>alert(666)</script></div>\n"
   end
   it 'should entity' do
-    tc "<p>\u00a0</p>\n", "&nbsp;"
-    tc "<p>„text“</p>\n", "&bdquo;text&ldquo;"
+    #tc "<p>\u00a0</p>\n", "&nbsp;"
+    #tc "<p>„text“</p>\n", "&bdquo;text&ldquo;"
+    tc "<p>&nbsp;</p>\n", "&nbsp;"
+    tc "<p>&bdquo;text&ldquo;</p>\n", "&bdquo;text&ldquo;"
   end
   it 'should plugin' do
     tc "<p>AHOJTE!</p>\n", "{{!print AHOJTE}}"
@@ -979,13 +979,25 @@ eos
     tc "<p>,FALSE</p>\n", "{{!yset data|{a: 1, b: 2} }},{{!ifdef data.q|TRUE|FALSE}}"
   end
 
-  it 'should {{!html}}' do
-    tc "alert(666)", "{{!html <script>alert(666)</script>}}", raw_html: true
-    tc "<p><b>T</b>E</p>", "{{!html <p><b>T</b>E</p>}}\n", raw_html: true
-    tc "<span>Span</span>", "{{!html <span>Span</span>}}\n", raw_html: true
-    #tc "<span>Span</span>", "**{{!html <span>Span</span>}}**\n", raw_html: true
-    tc "<div class=\"ahoj\">Div</div>", "{{!html <div class=\"ahoj\">Div</div>}}\n", raw_html: true
-    tc "<span>Span</span><span>Span</span>", "{{!html <span>Span</span>}}{{!html <span>Span</span>}}\n", raw_html: true
+  it 'should parse html' do
+    tc "<p>alert(666)</p>\n", "<script>alert(666)</script>", raw_html: true
+    tc "<p><b>T</b>E</p>\n", "<p><b>T</b>E</p>", raw_html: true
+    tc "<p><span>Span</span></p>\n", "<span>Span</span>\n", raw_html: true
+    tc "<p><strong><span>Span</span></strong></p>\n", "**<span>Span</span>**\n", raw_html: true
+    tc "<div class=\"ahoj\">Div</div>\n", "<div class=\"ahoj\">Div</div>\n", raw_html: true
+    tc "<p><strong>ahoj</strong></p>\n<div class=\"ahoj\">Div</div>\n", "**ahoj<div class=\"ahoj\">Div</div>\n", raw_html: true
+    tc "<p><span>Span</span><span>Span</span></p>\n", "<span>Span</span><span>Span</span>\n", raw_html: true
+    tc "<p><em><b>boldoitali</b></em>cE</p>\n", "<p>''<b>boldoitali''c</b>E</p>", raw_html: true
+    tc "<p><b>blabla</b></p>\n<p>endE</p>\n", "<p><b>bla</html>bla</p>end</b>E</p>", raw_html: true
+    tc "<p>baf</p>\n", "\n\n\nbaf\n\n\n", raw_html: true
+    tc "<div class=\"ahoj\">Div</div>\n<p>baf</p>\n", "<div class=\"ahoj\">Div</div>\nbaf\n", raw_html: true
+
+    tc "<p><b>BOLD</b></p>\n", "<b>BOLD</b>\n", raw_html: true
+    tc "<p><br/></p>\n", "<br/>\n", raw_html: true
+    tc "<p><br/></p>\n", "<br></br>\n", raw_html: true
+    tc "<p><b class=\"bclass\">BOLD</b></p>\n", "<b class=\"bclass\">BOLD</b>\n", raw_html: true
+    tc "<p><b class=\"bclass\">BOLD</b></p>\n", "<b bad=\"bad\" class=\"bclass\">BOLD</b>\n", raw_html: true
+    tc "<p><b class=\"bclass\">BOLD</b></p>\n", "<b bad=\"bad\" class=\"bclass\">BOLD</b>\n", raw_html: true
   end
 
   end

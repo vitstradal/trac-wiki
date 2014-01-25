@@ -65,9 +65,8 @@ module TracWiki
     attr_writer :math
     def math?; @math; end
 
-    # allow {{{! ... html ... }}}
+    # allow some <b> <form> <html> 
     # html will be sanitized
-    # {{{!\n html here  \n}}}\n
     attr_writer :raw_html
     def raw_html?; @raw_html; end
 
@@ -94,7 +93,7 @@ module TracWiki
 
     # string begins with macro
     MACRO_BEG_REX =  /\A\{\{ ( \$[\$\.\w]+ | [\#!]\w* |\w+ ) /x
-    MACRO_BEG_INSIDE_REX =  /(.*?)(?<!\{)\{\{ ( \$[\$\.\w]+ | [\#!]\w* | \w+ ) /x
+    MACRO_BEG_INSIDE_REX =  /\A(.*?)(?<!\{)\{\{ ( \$[\$\.\w]+ | [\#!]\w* | \w+ ) /xm
     # find end of marcro or begin of inner macro
     MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ ( \$[\$\.\w]+ | [\#!]\w* | \w+)  )/mx
     def id_translit?; @id_translit; end
@@ -120,7 +119,11 @@ module TracWiki
         '!set'   => proc { |env| env[env.expand_arg(0)] = env.expand_arg(1); '' },
         '!yset'  => proc { |env| env[env.expand_arg(0)] = YAML.load(env.arg(1)); '' },
 
-        '!html'  => proc { |env| "\n{{{!\n#{env.arg(0)}\n}}}\n" },
+#        '!html'  => proc { |env| "\n{{{!\n#{env.arg(0)}\n}}}\n" },
+        '!sub'   => proc { |env| pat = env.expand_arg(1)
+                                 pat = Regexp.new(pat[1..-2]) if pat =~ /\A\/.*\/\Z/
+                                 env.expand_arg(0).gsub(pat, env.expand_arg(2))
+                         },
         '!for'   => proc { |env| i_name = env.arg(0)
                                top = env.arg(1)
                                tmpl = env.arg(2)
@@ -135,8 +138,8 @@ module TracWiki
                                    set = (0 .. set.size-1)
                                  else
                                    print "error top(#{top}), set#{set} #{set.class}\n"
-                                   pp env
-                                   raise 'Error'
+                                   env.pp_env
+                                   raise "Error in {{!for #{i_name}|#{top}|#{tmpl}}}"
                                  end
                                end
                                set.map do |i|
@@ -457,7 +460,10 @@ module TracWiki
 
     def parse_inline_tag(str)
       case
-      when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline pre (tt)
+      when raw_html? && str =~ /\A<(\/)?(\w+)(?:([^>]*?))?(\/\s*)?>/     # single inline <html> tag
+        eot, tag, args, closed = $1, $2, $3, $4
+        do_raw_tag(eot, tag, args, closed, $'.size)
+      when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline {{{ }}} pre (tt)
         @tree.tag(:tt, $1)
       when str =~ MACRO_BEG_REX                # macro  {{
         str, lines = parse_macro($1, $')
@@ -515,6 +521,7 @@ module TracWiki
       @env = Env.new(self) if @env.nil?
       begin
         mac_out, rest, lines = @env.parse_macro_all(macro_name, str)
+        #print "mac: '#{mac_out}' rest: '#{rest}'\n"
         return mac_out + rest, lines
       rescue  TooLongException => e
         return "TOO_LONG_EXPANSION_OF_MACRO(#{macro_name})QUIT", 0
@@ -651,9 +658,32 @@ module TracWiki
       @tree.tag(:pre, nowikiblock)
     end
 
-    def do_raw_html(text)
-      end_paragraph
-      @tree.add_raw(text)
+    def do_raw_tag(eot, tag, attrs, closed, tail_size)
+      if !eot
+        end_paragraph if tag == 'p' || tag == 'div'
+        #print "open tag #{tag},'#{attrs}'\n"
+        attrs_h = _parse_attrs_to_hash(attrs)
+        @tree.tag_beg(tag, attrs_h)
+        @tree.tag_end(tag) if closed
+      else
+        #print "close tag #{tag}\n"
+        @tree.tag_end(tag)
+        if tag == 'p' || tag == 'div'
+          end_paragraph
+          start_paragraph if tail_size > 0
+        end
+      end
+    end
+
+    def _parse_attrs_to_hash(str)
+      ret = {}
+      while str =~ /\A\s*(\w+)\s*=\s*'([^>']*)'/ ||
+            str =~ /\A\s*(\w+)\s*=\s*"([^>"]*)"/ ||
+            str =~ /\A\s*(\w+)\s*=\s*(\S*)/
+       ret[$1] = $2
+       str = $'
+      end
+      ret
     end
 
     def do_hr
@@ -727,9 +757,6 @@ module TracWiki
         # merge
         when merge? && str =~ /\A(<{7}|={7}|>{7}|\|{7}) *(\S*).*$(\r?\n)?/
           do_merge($1, $2)
-        # raw_html {{{! ... }}}
-        when raw_html? && str =~ /\A\{\{\{!\r?\n(.*?)\r?\n\}\}\}/m
-          do_raw_html($1)
         # pre {{{ ... }}}
         when str =~ /\A\{\{\{\r?\n(.*?)\r?\n\}\}\}/m
           do_pre($1)

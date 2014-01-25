@@ -55,12 +55,24 @@ module TracWiki
       end
 
       def tag_end(tag_name)
-        if @cur.tag == tag_name.to_sym
-          @cur = @cur.par
-        else
-          raise "tag_end: cur tag is not <#{tag_name}>, but <#{@cur.tag}>"
+        c = @cur
+        ts = tag_name.to_sym
+        while c.tag != ts
+          c = c.par
+          if c.nil?
+            return "no such tag in stack, ingoring "
+          end
         end
+        @cur = c.par
         self
+
+#        if @cur.tag == tag_name.to_sym
+#          @cur = @cur.par
+#        else
+#          #pp(@root)
+#          raise "tag_end: cur tag is not <#{tag_name}>, but <#{@cur.tag}>"
+#        end
+#        self
       end
 
       # add space if needed
@@ -80,8 +92,8 @@ module TracWiki
       end
 
       def add_raw(cont)
-        cont_san = Sanitize.clean(cont, san_conf)
-        @cur.add(RawHtml.new(cont_san))
+        #cont_san = Sanitize.clean(cont, san_conf)
+        @cur.add(RawHtml.new(cont))
         self
       end
 
@@ -98,27 +110,70 @@ module TracWiki
      end
 
      def to_html
-       tree_to_html(@root)
+       ret = tree_to_html(@root)
+       #print "bf san:", ret, "\n"
+       #ret = Sanitize.clean(ret, san_conf)
+       #print "af san:", ret, "\n"
+       #ret + "\n"
+       ret
      end
-
      def tree_to_html(node)
         tag = node.tag
         if tag.nil?
           return cont_to_s(node.cont)
         end
 
-        nl = ""
-        #nl = "\n"  if [:div, :h1, :h2, :h3, :h4, :h5, :p].include? tag
-        nl = "\n"  if [:div, :p].include? tag
+        nl = ''
+        nl = "\n"  if TAGS_APPEND_NL.include? tag
 
+        if ! TAGS_ALLOVED.include? tag
+          return '' if node.cont.size == 0
+          return cont_to_s(node.cont)
+        end
         if node.cont.size == 0
-          if [:a, :td, :h1, :h2, :h3, :h4, :h5, :h6,:strong, :script].include? tag
-            return "<#{tag}#{attrs_to_s(node.attrs)}></#{tag}>"
+          if TAGS_SKIP_EMPTY.include? tag
+             return ''
           end
-          return "<#{tag}#{attrs_to_s(node.attrs)}/>#{nl}"
+          if TAGS_FORCE_PAIR.include? tag
+            return "<#{tag}#{attrs_to_s(tag, node.attrs)}></#{tag}>#{nl}"
+          end
+          return "<#{tag}#{attrs_to_s(tag, node.attrs)}/>#{nl}"
         end
 
-        return "<#{tag}#{attrs_to_s(node.attrs)}>#{cont_to_s(node.cont)}</#{tag}>#{nl}"
+        return "<#{tag}#{attrs_to_s(tag, node.attrs)}>#{cont_to_s(node.cont)}</#{tag}>#{nl}"
+     end
+
+
+     TAGS_APPEND_NL = [:div, :p]
+     TAGS_FORCE_PAIR = [:a, :td, :h1, :h2, :h3, :h4, :h5, :h6, :div, :strong, :script]
+     TAGS_ALLOVED = [:a, :h1, :h2, :h3, :h4, :h5, :h6, :div, :span, :p, :li, :ul, :ol, :b, :tt, :u, :del, :blockquote, :em, :dl, :dt, :dd, :table, :sup, :sub, :tr, :td, :th, :strong, :br , :img, :pre, :hr]
+     TAGS_SKIP_EMPTY = [ :p  ]
+     ATTRIBUTES_ALLOWED = { :form  =>  [:action, :meth],
+                            :input =>  [:type, :value],
+                            :a     =>  [:name, :href],
+                            :img   =>  [:src, :width, :height, :align, :valign, :style, :alt, :title],
+                            :td    =>  [:colspan, :rowspan, :style],
+                            :th    =>  [:colspan, :rowspan, :style],
+                            :_all  =>  [:class, :id],
+                           }
+
+     ATTRIBUTE_STYLE_REX = /\A( text-align:(center|right|left) |
+                                margin:    \d+(px|em)? |
+                                ;
+                             )+\Z/x
+     def attrs_to_s(tag, attrs)
+       return '' if attrs.nil? || attrs.size == 0
+       ret = ['']
+       tag_attrs = ATTRIBUTES_ALLOWED[tag] || []
+       attrs.each_pair do |k,v|
+         next if v.nil?
+         k_sym = k.to_sym
+         next if ! ATTRIBUTES_ALLOWED[:_all].include?(k_sym) && ! tag_attrs.include?(k_sym)
+         next if k == :style && v !~ ATTRIBUTE_STYLE_REX
+         #print "style: #{v}\n" if k == :style
+         ret.push "#{TracWiki::Parser.escapeHTML(k.to_s)}=\"#{TracWiki::Parser.escapeHTML(v.to_s)}\""
+       end
+       return ret.sort.join(' ')
      end
 
      def cont_to_s(cont)
@@ -134,26 +189,20 @@ module TracWiki
         end.join('')
       end
 
-     def attrs_to_s(attrs)
-       return '' if attrs.nil? || attrs.size == 0
-       ret = ['']
-       attrs.each_pair do |k,v|
-         ret.push "#{TracWiki::Parser.escapeHTML(k.to_s)}=\"#{TracWiki::Parser.escapeHTML(v.to_s)}\"" if !v.nil?
-       end
-       return ret.sort.join(' ')
-     end
-
      def san_conf
         return @san_conf if @san_conf
-        conf = { elements:   ['form', 'input', 'span', 'div'],
+        conf = { elements:   ['tt', 'form', 'input', 'span', 'div'],
+                 output: :xhtml,
                  attributes: { 'form'  =>  ['action', 'meth'],
                                'input' =>  ['type', 'value'],
-                               'span'  =>  ['class'],
-                               'div'   =>  ['class'],
+                               'span'  =>  ['class', 'id'],
+                               'div'   =>  ['class', 'id'],
+                               'a'     =>  ['class', 'id', 'name', 'href'],
+                               :all    =>  ['class', 'id'],
                              },
                }
                    
-        @san_conf = conf.merge(Sanitize::Config::RELAXED){|k,o,n| o.is_a?(Hash) ? o.merge(n) :
+        @san_conf = Sanitize::Config::RELAXED.merge(conf){|k,o,n| o.is_a?(Hash) ? o.merge(n) :
                                                                   o.is_a?(Array) ? o + n :
                                                                   n }
 
