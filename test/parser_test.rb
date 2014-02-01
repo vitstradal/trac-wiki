@@ -50,7 +50,7 @@ describe TracWiki::Parser do
   it 'should not parse linkd' do
     tc "<p>[[ahoj]]</p>\n", "[[ahoj]]", :no_link => true
     tc "<p>[[ahoj|bhoj]]</p>\n", "[[ahoj|bhoj]]", :no_link => true
-    tc "<ul><li>[[ahoj|bhoj]]</li></ul>", "* [[ahoj|bhoj]]", :no_link => true
+    tc "<ul><li>[[ahoj|bhoj]]</li>\n</ul>\n", "* [[ahoj|bhoj]]", :no_link => true
   end
   it 'should parse bold' do
     # Bold can be used inside paragraphs
@@ -58,10 +58,10 @@ describe TracWiki::Parser do
     tc "<p>This <strong>is</strong> bold and <strong>bold</strong>ish</p>\n", "This **is** bold and **bold**ish"
 
     # Bold can be used inside list items
-    tc "<ul><li>This is <strong>bold</strong></li></ul>", "* This is **bold**"
+    tc "<ul><li>This is <strong>bold</strong></li>\n</ul>\n", "* This is **bold**"
 
     # Bold can be used inside table cells
-    tc("<table><tr><td>This is <strong>bold</strong></td></tr></table>",
+    tc("<table><tr><td>This is <strong>bold</strong></td>\n</tr>\n</table>\n",
        "||This is **bold**||")
 
     # Links can appear inside bold text:
@@ -72,11 +72,11 @@ describe TracWiki::Parser do
     tc "<p>This <strong>is bold</strong></p>\n", "This **is bold"
 
     # Bold will end at the end of list items
-    tc("<ul><li>Item <strong>bold</strong></li><li>Item normal</li></ul>",
+    tc("<ul><li>Item <strong>bold</strong></li>\n<li>Item normal</li>\n</ul>\n",
        "* Item **bold\n* Item normal")
 
     # Bold will end at the end of table cells
-    tc("<table><tr><td>Item <strong>bold</strong></td><td>Another <strong>bold</strong></td></tr></table>",
+    tc("<table><tr><td>Item <strong>bold</strong></td>\n<td>Another <strong>bold</strong></td>\n</tr>\n</table>\n",
        "||Item **bold||Another **bold||")
 
     # Bold should not cross paragraphs
@@ -121,10 +121,10 @@ describe TracWiki::Parser do
        "This ''is'' italic and ''italic''ish")
 
     # Italic can be used inside list items
-    tc "<ul><li>This is <em>italic</em></li></ul>", "* This is ''italic''"
+    tc "<ul><li>This is <em>italic</em></li>\n</ul>\n", "* This is ''italic''"
 
     # Italic can be used inside table cells
-    tc("<table><tr><td>This is <em>italic</em></td></tr></table>",
+    tc("<table><tr><td>This is <em>italic</em></td>\n</tr>\n</table>\n",
        "||This is ''italic''||")
 
     # Links can appear inside italic text:
@@ -135,11 +135,11 @@ describe TracWiki::Parser do
     tc "<p>This <em>is italic</em></p>\n", "This ''is italic"
 
     # Italic will end at the end of list items
-    tc("<ul><li>Item <em>italic</em></li><li>Item normal</li></ul>",
+    tc("<ul><li>Item <em>italic</em></li>\n<li>Item normal</li>\n</ul>\n",
        "* Item ''italic\n* Item normal")
 
     # Italic will end at the end of table cells
-    tc("<table><tr><td>Item <em>italic</em></td><td>Another <em>italic</em></td></tr></table>",
+    tc("<table><tr><td>Item <em>italic</em></td>\n<td>Another <em>italic</em></td>\n</tr>\n</table>\n",
        "||Item ''italic||Another ''italic")
 
     # Italic should not cross paragraphs
@@ -295,10 +295,10 @@ describe TracWiki::Parser do
     tc "<p>This is my text.</p>\n<p>This is more text.</p>\n", "This is\nmy text.\n\n\n\nThis is\nmore text."
 
     # A list end paragraphs too.
-    tc "<p>Hello</p>\n<ul><li>Item</li></ul>", "Hello\n* Item\n"
+    tc "<p>Hello</p>\n<ul><li>Item</li>\n</ul>\n", "Hello\n* Item\n"
 
     #  A table end paragraphs too.
-    tc "<p>Hello</p>\n<table><tr><td>Cell</td></tr></table>", "Hello\n||Cell||"
+    tc "<p>Hello</p>\n<table><tr><td>Cell</td>\n</tr>\n</table>\n", "Hello\n||Cell||"
 
     #  A nowiki end paragraphs too.
     tc "<p>Hello</p>\n<pre>nowiki</pre>", "Hello\n{{{\nnowiki\n}}}\n"
@@ -326,15 +326,15 @@ describe TracWiki::Parser do
   end
   it 'should parse definition list' do
     # FIXME: trailing space 
-    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python:: \n   definition\n"
-    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python::\ndefinition\n"
-    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python::\r\ndefinition\n"
-    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python::\r\n definition\n"
-    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python:: \r\n definition\n"
-    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python::   definition\n"
-    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>", "Monty Python:: definition\n"
-    tc "<dl><dt>Monty::Python</dt><dd> definition</dd></dl>", "Monty::Python:: definition\n"
-    tc "<dl><dt>::Python</dt><dd> definition</dd></dl>", "::Python:: definition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>\n", "Monty Python:: \n   definition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>\n", "Monty Python::\ndefinition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>\n", "Monty Python::\r\ndefinition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>\n", "Monty Python::\r\n definition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>\n", "Monty Python:: \r\n definition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>\n", "Monty Python::   definition\n"
+    tc "<dl><dt>Monty Python</dt><dd> definition</dd></dl>\n", "Monty Python:: definition\n"
+    tc "<dl><dt>Monty::Python</dt><dd> definition</dd></dl>\n", "Monty::Python:: definition\n"
+    tc "<dl><dt>::Python</dt><dd> definition</dd></dl>\n", "::Python:: definition\n"
   end
   it 'should not parse definition list' do
     # FIXME: trailing space 
@@ -349,133 +349,133 @@ describe TracWiki::Parser do
     # List items begin with a * at the beginning of a line.
     # An item ends at the next *
 
-    tc "<ul><li>Item 1 next</li></ul>", "* Item 1\n  next\n"
+    tc "<ul><li>Item 1 next</li>\n</ul>\n", "* Item 1\n  next\n"
 
     #  Whitespace is optional before and after the *.
-    tc("<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>",
+    tc("<ul><li>Item 1</li>\n<li>Item 2</li>\n<li>Item 3</li>\n</ul>\n",
        " * Item 1\n * Item 2\n *\t\tItem 3\n")
 
     #  A space is required if if the list element starts with bold text.
-    tc("<ul><li><strong>Item 1</strong></li></ul>", "* **Item 1")
+    tc("<ul><li><strong>Item 1</strong></li>\n</ul>\n", "* **Item 1")
 
     #  An item ends at blank line
-    tc("<ul><li>Item</li></ul><p>Par</p>\n", "* Item\n\nPar\n")
+    tc("<ul><li>Item</li>\n</ul>\n<p>Par</p>\n", "* Item\n\nPar\n")
 
     #  An item ends at a heading
-    tc("<ul><li>Item</li></ul><h1>Heading</h1>", "* Item\n= Heading =\n")
+    tc("<ul><li>Item</li>\n</ul>\n<h1>Heading</h1>", "* Item\n= Heading =\n")
 
     #  An item ends at a table
-    tc("<ul><li>Item</li></ul><table><tr><td>Cell</td></tr></table>", "* Item\n||Cell||\n")
+    tc("<ul><li>Item</li>\n</ul>\n<table><tr><td>Cell</td>\n</tr>\n</table>\n", "* Item\n||Cell||\n")
 
     #  An item ends at a nowiki block
-    tc("<ul><li>Item</li></ul><pre>Code</pre>", "* Item\n{{{\nCode\n}}}\n")
+    tc("<ul><li>Item</li>\n</ul>\n<pre>Code</pre>", "* Item\n{{{\nCode\n}}}\n")
 
     #  An item can span multiple lines
-    tc("<ul><li>The quick brown fox jumps over lazy dog.</li><li>Humpty Dumpty sat on a wall.</li></ul>",
+    tc("<ul><li>The quick brown fox jumps over lazy dog.</li>\n<li>Humpty Dumpty sat on a wall.</li>\n</ul>\n",
        "* The quick\nbrown fox\n\tjumps over\nlazy dog.\n* Humpty Dumpty\nsat\t\non a wall.")
 
     #  An item can contain line breaks
-    tc("<ul><li>The quick brown<br/>fox jumps over lazy dog.</li></ul>",
+    tc("<ul><li>The quick brown<br/>fox jumps over lazy dog.</li>\n</ul>\n",
        "* The quick brown\\\\fox jumps over lazy dog.")
 
     #  Nested
-    tc "<ul><li>Item 1<ul><li>Item 2</li></ul></li><li>Item 3</li></ul>", "* Item 1\n  * Item 2\n*\t\tItem 3\n"
+    tc "<ul><li>Item 1<ul><li>Item 2</li>\n</ul>\n</li>\n<li>Item 3</li>\n</ul>\n", "* Item 1\n  * Item 2\n*\t\tItem 3\n"
 
     #  Nested up to 5 levels
-    tc("<ul><li>Item 1<ul><li>Item 2<ul><li>Item 3<ul><li>Item 4<ul><li>Item 5</li></ul></li></ul></li></ul></li></ul></li></ul>",
+    tc("<ul><li>Item 1<ul><li>Item 2<ul><li>Item 3<ul><li>Item 4<ul><li>Item 5</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>\n",
        "* Item 1\n * Item 2\n   * Item 3\n    *    Item 4\n     * Item 5\n")
 
-    tc("<ul><li>Item 1<ul><li>Item 2<ul><li>Item 3<ul><li>Item 4</li></ul></li></ul></li></ul></li><li>Item 5</li></ul>",
+    tc("<ul><li>Item 1<ul><li>Item 2<ul><li>Item 3<ul><li>Item 4</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>\n</li>\n<li>Item 5</li>\n</ul>\n",
        "* Item 1\n * Item 2\n   * Item 3\n    *    Item 4\n* Item 5\n")
 
     #  ** immediatly following a list element will be treated as a nested unordered element.
-    tc("<ul><li>Hello, World!<ul><li>Not bold</li></ul></li></ul>",
+    tc("<ul><li>Hello, World!<ul><li>Not bold</li>\n</ul>\n</li>\n</ul>\n",
        "* Hello,\n  World!\n  * Not bold\n")
 
     #  ** immediatly following a list element will be treated as a nested unordered element.
-    tc("<ol><li>Hello, World!<ul><li>Not bold</li></ul></li></ol>",
+    tc("<ol><li>Hello, World!<ul><li>Not bold</li>\n</ul>\n</li>\n</ol>\n",
        "1. Hello,\n   World!\n  * Not bold\n")
 
     #  [...] otherwise it will be treated as the beginning of bold text.
-    tc("<ul><li>Hello, World!</li></ul><p><strong>Not bold</strong></p>\n",
+    tc("<ul><li>Hello, World!</li>\n</ul>\n<p><strong>Not bold</strong></p>\n",
        "* Hello,\nWorld!\n\n**Not bold\n")
   end
 
   it 'should parse ordered lists' do
     #  List items begin with a * at the beginning of a line.
     #  An item ends at the next *
-    tc "<ol><li>Item 1</li><li>Item 2</li><li>Item 3</li></ol>", "1. Item 1\n2. Item 2\n3. \t\tItem 3\n"
+    tc "<ol><li>Item 1</li>\n<li>Item 2</li>\n<li>Item 3</li>\n</ol>\n", "1. Item 1\n2. Item 2\n3. \t\tItem 3\n"
 
     #  Whitespace is optional before and after the #.
-    tc("<ol><li>Item 1</li><li>Item 2</li><li>Item 3</li></ol>",
+    tc("<ol><li>Item 1</li>\n<li>Item 2</li>\n<li>Item 3</li>\n</ol>\n",
        "1. Item 1\n1.   Item 2\n4.\t\tItem 3\n")
 
     #  A space is required if if the list element starts with bold text.
-#    tc("<ol><li><ol><li><ol><li>Item 1</li></ol></li></ol></li></ol>", "###Item 1")
-    tc("<ol><li><strong>Item 1</strong></li></ol>", "1. **Item 1")
+#    tc("<ol><li><ol><li><ol><li>Item 1</li></ol>\n</li>\n</ol>\n</li>\n</ol>\n", "###Item 1")
+    tc("<ol><li><strong>Item 1</strong></li>\n</ol>\n", "1. **Item 1")
 
     #  An item ends at blank line
-    tc("<ol><li>Item</li></ol><p>Par</p>\n", "1. Item\n\nPar\n")
+    tc("<ol><li>Item</li>\n</ol>\n<p>Par</p>\n", "1. Item\n\nPar\n")
 
     #  An item ends at a heading
-    tc("<ol><li>Item</li></ol><h1>Heading</h1>", "1. Item\n= Heading =\n")
+    tc("<ol><li>Item</li>\n</ol>\n<h1>Heading</h1>", "1. Item\n= Heading =\n")
 
     #  An item ends at a table
-    tc("<ol><li>Item</li></ol><table><tr><td>Cell</td></tr></table>", "1. Item\n||Cell||\n")
+    tc("<ol><li>Item</li>\n</ol>\n<table><tr><td>Cell</td>\n</tr>\n</table>\n", "1. Item\n||Cell||\n")
 
     #  An item ends at a nowiki block
-    tc("<ol><li>Item</li></ol><pre>Code</pre>", "1. Item\n{{{\nCode\n}}}\n")
+    tc("<ol><li>Item</li>\n</ol>\n<pre>Code</pre>", "1. Item\n{{{\nCode\n}}}\n")
 
     #  An item can span multiple lines
-    tc("<ol><li>The quick brown fox jumps over lazy dog.</li><li>Humpty Dumpty sat on a wall.</li></ol>",
+    tc("<ol><li>The quick brown fox jumps over lazy dog.</li>\n<li>Humpty Dumpty sat on a wall.</li>\n</ol>\n",
        "1. The quick\nbrown fox\n\tjumps over\nlazy dog.\n2. Humpty Dumpty\nsat\t\non a wall.")
 
     #  An item can contain line breaks
-    tc("<ol><li>The quick brown<br/>fox jumps over lazy dog.</li></ol>",
+    tc("<ol><li>The quick brown<br/>fox jumps over lazy dog.</li>\n</ol>\n",
        "1. The quick brown\\\\fox jumps over lazy dog.")
 
     #  Nested
-    tc "<ol><li>Item 1<ol><li>Item 2</li></ol></li><li>Item 3</li></ol>", "1. Item 1\n  1. Item 2\n2.\t\tItem 3\n"
+    tc "<ol><li>Item 1<ol><li>Item 2</li>\n</ol>\n</li>\n<li>Item 3</li>\n</ol>\n", "1. Item 1\n  1. Item 2\n2.\t\tItem 3\n"
 
     #  Nested up to 5 levels
-    tc("<ol><li>Item 1<ol><li>Item 2<ol><li>Item 3<ol><li>Item 4<ol><li>Item 5</li></ol></li></ol></li></ol></li></ol></li></ol>",
+    tc("<ol><li>Item 1<ol><li>Item 2<ol><li>Item 3<ol><li>Item 4<ol><li>Item 5</li>\n</ol>\n</li>\n</ol>\n</li>\n</ol>\n</li>\n</ol>\n</li>\n</ol>\n",
        "1. Item 1\n  1. Item 2\n     1. Item 3\n      1. Item 4\n               1. Item 5\n")
 
     #  The two-bullet rule only applies to **.
-#    tc("<ol><li><ol><li>Item</li></ol></li></ol>", "##Item")
+#    tc("<ol><li><ol><li>Item</li>\n</ol>\n</li>\n</ol>\n", "##Item")
   end
 
   it 'should parse ordered lists #2' do
-    tc "<ol><li>Item 1</li><li>Item 2</li><li>Item 3</li></ol>", "1. Item 1\n1.    Item 2\n1.\t\tItem 3\n"
+    tc "<ol><li>Item 1</li>\n<li>Item 2</li>\n<li>Item 3</li>\n</ol>\n", "1. Item 1\n1.    Item 2\n1.\t\tItem 3\n"
     # Nested
-    tc "<ol><li>Item 1<ol><li>Item 2</li></ol></li><li>Item 3</li></ol>", "1. Item 1\n  1. Item 2\n1.\t\tItem 3\n"
+    tc "<ol><li>Item 1<ol><li>Item 2</li>\n</ol>\n</li>\n<li>Item 3</li>\n</ol>\n", "1. Item 1\n  1. Item 2\n1.\t\tItem 3\n"
     # Multiline
-    tc "<ol><li>Item 1 on multiple lines</li></ol>", "1. Item 1\non multiple lines"
+    tc "<ol><li>Item 1 on multiple lines</li>\n</ol>\n", "1. Item 1\non multiple lines"
   end
 
   it 'should parse ambiguious mixed lists' do
     # ol following ul
-    tc("<ul><li>uitem</li></ul><ol><li>oitem</li></ol>", "* uitem\n1. oitem\n")
+    tc("<ul><li>uitem</li>\n</ul>\n<ol><li>oitem</li>\n</ol>\n", "* uitem\n1. oitem\n")
 
     # ul following ol
-    tc("<ol><li>uitem</li></ol><ul><li>oitem</li></ul>", "1. uitem\n* oitem\n")
+    tc("<ol><li>uitem</li>\n</ol>\n<ul><li>oitem</li>\n</ul>\n", "1. uitem\n* oitem\n")
 
     # 2ol following ul
-    tc("<ul><li>uitem<ol><li>oitem</li></ol></li></ul>", "* uitem\n  1. oitem\n")
+    tc("<ul><li>uitem<ol><li>oitem</li>\n</ol>\n</li>\n</ul>\n", "* uitem\n  1. oitem\n")
 
     # 2ul following ol
-    tc("<ol><li>uitem<ul><li>oitem</li></ul></li></ol>", "1. uitem\n  * oitem\n")
+    tc("<ol><li>uitem<ul><li>oitem</li>\n</ul>\n</li>\n</ol>\n", "1. uitem\n  * oitem\n")
 
     # 3ol following 3ul
-#    tc("<ul><li><ul><li><ul><li>uitem</li></ul><ol><li>oitem</li></ol></li></ul></li></ul>", "***uitem\n###oitem\n")
+#    tc("<ul><li><ul><li><ul><li>uitem</li>\n</ul>\n<ol><li>oitem</li>\n</ol>\n</li>\n</ul>\n</li>\n</ul>\n", "***uitem\n###oitem\n")
 
     # 2ul following 2ol
-#    tc("<ol><li><ol><li>uitem</li></ol><ul><li>oitem</li></ul></li></ol>", "##uitem\n**oitem\n")
+#    tc("<ol><li><ol><li>uitem</li>\n</ol>\n<ul><li>oitem</li>\n</ul>\n</li>\n</ol>\n", "##uitem\n**oitem\n")
 
     # ol following 2ol
-#    tc("<ol><li><ol><li>oitem1</li></ol></li><li>oitem2</li></ol>", "##oitem1\n#oitem2\n")
+#    tc("<ol><li><ol><li>oitem1</li>\n</ol>\n</li>\n<li>oitem2</li>\n</ol>\n", "##oitem1\n#oitem2\n")
     # ul following 2ol
-#    tc("<ol><li><ol><li>oitem1</li></ol></li></ol><ul><li>oitem2</li></ul>", "##oitem1\n*oitem2\n")
+#    tc("<ol><li><ol><li>oitem1</li>\n</ol>\n</li>\n</ol>\n<ul><li>oitem2</li>\n</ul>\n", "##oitem1\n*oitem2\n")
   end
 
   it 'should parse ambiguious italics and url' do
@@ -588,67 +588,67 @@ describe TracWiki::Parser do
   end
 
   it 'should parse table' do
-    tc "<table><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||World!||"
-    tc "<table><tr><td>Hello</td><td>World!</td></tr><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||World!||\n||Hello||World!||\n\n"
-    tc "<table><tr><td>Hello</td><td>World!</td></tr><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||World!||\r\n||Hello||World!||\r\n\n"
-    tc "<table><tr><td>Hello</td><td>World!</td></tr></table>", "||Hello||\\\n||World!||"
-    tc "<table><tr><td>He</td><td>llo</td><td>World!</td></tr></table>", "||He||llo||\\\n||World!||"
-    tc "<table><tr><td>Hello</td><td colspan=\"2\">World!</td></tr></table>", "||Hello||||World!||"
-    tc "<table><tr><td>Hello</td><td colspan=\"2\">kuk</td><td>World!</td></tr></table>", "||Hello||||kuk||\\\n||World!||"
-    tc "<table><tr><td>1</td><td>2</td><td>3</td></tr><tr><td colspan=\"2\">1-2</td><td>3</td></tr><tr><td>1</td><td colspan=\"2\">2-3</td></tr><tr><td colspan=\"3\">1-2-3</td></tr></table>", "|| 1 || 2 || 3 ||\n|||| 1-2 || 3 ||\n|| 1 |||| 2-3 ||\n|||||| 1-2-3 ||\n"
+    tc "<table><tr><td>Hello</td>\n<td>World!</td>\n</tr>\n</table>\n", "||Hello||World!||"
+    tc "<table><tr><td>Hello</td>\n<td>World!</td>\n</tr>\n<tr><td>Hello</td>\n<td>World!</td>\n</tr>\n</table>\n", "||Hello||World!||\n||Hello||World!||\n\n"
+    tc "<table><tr><td>Hello</td>\n<td>World!</td>\n</tr>\n<tr><td>Hello</td>\n<td>World!</td>\n</tr>\n</table>\n", "||Hello||World!||\r\n||Hello||World!||\r\n\n"
+    tc "<table><tr><td>Hello</td>\n<td>World!</td>\n</tr>\n</table>\n", "||Hello||\\\n||World!||"
+    tc "<table><tr><td>He</td>\n<td>llo</td>\n<td>World!</td>\n</tr>\n</table>\n", "||He||llo||\\\n||World!||"
+    tc "<table><tr><td>Hello</td>\n<td colspan=\"2\">World!</td>\n</tr>\n</table>\n", "||Hello||||World!||"
+    tc "<table><tr><td>Hello</td>\n<td colspan=\"2\">kuk</td>\n<td>World!</td>\n</tr>\n</table>\n", "||Hello||||kuk||\\\n||World!||"
+    tc "<table><tr><td>1</td>\n<td>2</td>\n<td>3</td>\n</tr>\n<tr><td colspan=\"2\">1-2</td>\n<td>3</td>\n</tr>\n<tr><td>1</td>\n<td colspan=\"2\">2-3</td>\n</tr>\n<tr><td colspan=\"3\">1-2-3</td>\n</tr>\n</table>\n", "|| 1 || 2 || 3 ||\n|||| 1-2 || 3 ||\n|| 1 |||| 2-3 ||\n|||||| 1-2-3 ||\n"
 
-    tc "<table><tr><td>table</td><td style=\"text-align:center\">center</td></tr></table>", "||table||   center  ||"
-    tc "<table><tr><td>table</td><td style=\"text-align:right\">right</td></tr></table>", "||table||   right||"
-    tc "<table><tr><td>table</td><td style=\"text-align:center\">center</td><td style=\"text-align:right\">right</td></tr></table>", "||table||  center  ||   right||"
+    tc "<table><tr><td>table</td>\n<td style=\"text-align:center\">center</td>\n</tr>\n</table>\n", "||table||   center  ||"
+    tc "<table><tr><td>table</td>\n<td style=\"text-align:right\">right</td>\n</tr>\n</table>\n", "||table||   right||"
+    tc "<table><tr><td>table</td>\n<td style=\"text-align:center\">center</td>\n<td style=\"text-align:right\">right</td>\n</tr>\n</table>\n", "||table||  center  ||   right||"
 
-    tc "<table><tr><td>Hello, World!</td></tr></table>", "||Hello, World!||"
-    tc "<table><tr><td style=\"text-align:right\">Hello, Right World!</td></tr></table>", "|| Hello, Right World!||"
-    tc "<table><tr><th style=\"text-align:right\">Hello, Right World!</th></tr></table>", "||= Hello, Right World!=||"
-    tc "<table><tr><td style=\"text-align:center\">Hello, Centered World!</td></tr></table>", "||    Hello, Centered World!  ||"
-    tc "<table><tr><th style=\"text-align:center\">Hello, Centered World!</th></tr></table>", "||=    Hello, Centered World!  =||"
+    tc "<table><tr><td>Hello, World!</td>\n</tr>\n</table>\n", "||Hello, World!||"
+    tc "<table><tr><td style=\"text-align:right\">Hello, Right World!</td>\n</tr>\n</table>\n", "|| Hello, Right World!||"
+    tc "<table><tr><th style=\"text-align:right\">Hello, Right World!</th></tr>\n</table>\n", "||= Hello, Right World!=||"
+    tc "<table><tr><td style=\"text-align:center\">Hello, Centered World!</td>\n</tr>\n</table>\n", "||    Hello, Centered World!  ||"
+    tc "<table><tr><th style=\"text-align:center\">Hello, Centered World!</th></tr>\n</table>\n", "||=    Hello, Centered World!  =||"
     # Multiple columns
-    tc "<table><tr><td>c1</td><td>c2</td><td>c3</td></tr></table>", "||c1||c2||c3||"
+    tc "<table><tr><td>c1</td>\n<td>c2</td>\n<td>c3</td>\n</tr>\n</table>\n", "||c1||c2||c3||"
     # Multiple rows
-    tc "<table><tr><td>c11</td><td>c12</td></tr><tr><td>c21</td><td>c22</td></tr></table>", "||c11||c12||\n||c21||c22||\n"
+    tc "<table><tr><td>c11</td>\n<td>c12</td>\n</tr>\n<tr><td>c21</td>\n<td>c22</td>\n</tr>\n</table>\n", "||c11||c12||\n||c21||c22||\n"
     # End pipe is optional
-    tc "<table><tr><td>c1</td><td>c2</td><td>c3</td></tr></table>", "||c1||c2||c3"
+    tc "<table><tr><td>c1</td>\n<td>c2</td>\n<td>c3</td>\n</tr>\n</table>\n", "||c1||c2||c3"
     # Empty cells
-    tc "<table><tr><td>c1</td><td></td><td>c2</td></tr></table>", "||c1|| ||c2"
+    tc "<table><tr><td>c1</td>\n<td></td>\n<td>c2</td>\n</tr>\n</table>\n", "||c1|| ||c2"
     # Escaping cell separator
-    tc "<table><tr><td>c1|c2</td><td>c3</td></tr></table>", "||c1!|c2||c3"
+    tc "<table><tr><td>c1|c2</td>\n<td>c3</td>\n</tr>\n</table>\n", "||c1!|c2||c3"
     # Escape in last cell + empty cell
-    tc "<table><tr><td>c1</td><td>c2|</td></tr></table>", "||c1||c2!|"
-    tc "<table><tr><td>c1</td><td>c2|</td></tr></table>", "||c1||c2!|"
-    tc "<table><tr><td>c1</td><td>c2|</td><td></td></tr></table>", "||c1||c2| || ||"
+    tc "<table><tr><td>c1</td>\n<td>c2|</td>\n</tr>\n</table>\n", "||c1||c2!|"
+    tc "<table><tr><td>c1</td>\n<td>c2|</td>\n</tr>\n</table>\n", "||c1||c2!|"
+    tc "<table><tr><td>c1</td>\n<td>c2|</td>\n<td></td>\n</tr>\n</table>\n", "||c1||c2| || ||"
     # Equal sign after pipe make a header
-    tc "<table><tr><th>Header</th></tr></table>", "||=Header=||"
+    tc "<table><tr><th>Header</th></tr>\n</table>\n", "||=Header=||"
 
-    tc "<table><tr><td>c1</td><td><a href=\"Link\">Link text</a></td><td><img src=\"Image\"/></td></tr></table>", "||c1||[[Link|Link text]]||[[Image(Image)]]||"
-    tc "<table><tr><td>c1</td><td><a href=\"Link\">Link text</a></td><td><img src=\"Image\"/></td></tr></table>", "||c1||[Link|Link text]||[[Image(Image)]]||"
+    tc "<table><tr><td>c1</td>\n<td><a href=\"Link\">Link text</a></td>\n<td><img src=\"Image\"/></td>\n</tr>\n</table>\n", "||c1||[[Link|Link text]]||[[Image(Image)]]||"
+    tc "<table><tr><td>c1</td>\n<td><a href=\"Link\">Link text</a></td>\n<td><img src=\"Image\"/></td>\n</tr>\n</table>\n", "||c1||[Link|Link text]||[[Image(Image)]]||"
   end
 
   it 'should parse following table' do
     # table followed by heading
-    tc("<table><tr><td>table</td></tr></table><h1>heading</h1>", "||table||\n=heading=\n")
-    tc("<table><tr><td>table</td></tr></table><h1>heading</h1>", "||table||\n\n=heading=\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<h1>heading</h1>", "||table||\n=heading=\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<h1>heading</h1>", "||table||\n\n=heading=\n")
     # table followed by paragraph
-    tc("<table><tr><td>table</td></tr></table><p>par</p>\n", "||table||\npar\n")
-    tc("<table><tr><td>table</td></tr></table><p>par</p>\n", "||table||\n\npar\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<p>par</p>\n", "||table||\npar\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<p>par</p>\n", "||table||\n\npar\n")
     # table followed by unordered list
-    tc("<table><tr><td>table</td></tr></table><ul><li>item</li></ul>", "||table||\n* item\n")
-    tc("<table><tr><td>table</td></tr></table><ul><li>item</li></ul>", "||table||\n\n* item\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<ul><li>item</li>\n</ul>\n", "||table||\n* item\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<ul><li>item</li>\n</ul>\n", "||table||\n\n* item\n")
     # table followed by ordered list
-    tc("<table><tr><td>table</td></tr></table><ol><li>item</li></ol>", "||table||\n1. item\n")
-    tc("<table><tr><td>table</td></tr></table><ol><li>item</li></ol>", "||table||\n\n1. item\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<ol><li>item</li>\n</ol>\n", "||table||\n1. item\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<ol><li>item</li>\n</ol>\n", "||table||\n\n1. item\n")
     # table followed by horizontal rule
-    tc("<table><tr><td>table</td></tr></table><hr/>", "||table||\n----\n")
-    tc("<table><tr><td>table</td></tr></table><hr/>", "||table||\n\n----\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<hr/>", "||table||\n----\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<hr/>", "||table||\n\n----\n")
     # table followed by nowiki block
-    tc("<table><tr><td>table</td></tr></table><pre>pre</pre>", "||table||\n{{{\npre\n}}}\n")
-    tc("<table><tr><td>table</td></tr></table><pre>pre</pre>", "||table||\n\n{{{\npre\n}}}\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<pre>pre</pre>", "||table||\n{{{\npre\n}}}\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<pre>pre</pre>", "||table||\n\n{{{\npre\n}}}\n")
     # table followed by table
-    tc("<table><tr><td>table</td></tr><tr><td>table</td></tr></table>", "||table||\n||table||\n")
-    tc("<table><tr><td>table</td></tr></table><table><tr><td>table</td></tr></table>", "||table||\n\n||table||\n")
+    tc("<table><tr><td>table</td>\n</tr>\n<tr><td>table</td>\n</tr>\n</table>\n", "||table||\n||table||\n")
+    tc("<table><tr><td>table</td>\n</tr>\n</table>\n<table><tr><td>table</td>\n</tr>\n</table>\n", "||table||\n\n||table||\n")
   end
 
   it 'should parse following heading' do
@@ -659,11 +659,11 @@ describe TracWiki::Parser do
     tc("<h1>heading</h1><p>par</p>\n", "=heading=\npar\n")
     tc("<h1>heading</h1><p>par</p>\n", "=heading=\n\npar\n")
     # unordered list
-    tc("<h1>heading</h1><ul><li>item</li></ul>", "=heading=\n* item\n")
-    tc("<h1>heading</h1><ul><li>item</li></ul>", "=heading=\n\n* item\n")
+    tc("<h1>heading</h1><ul><li>item</li>\n</ul>\n", "=heading=\n* item\n")
+    tc("<h1>heading</h1><ul><li>item</li>\n</ul>\n", "=heading=\n\n* item\n")
     # ordered list
-    tc("<h1>heading</h1><ol><li>item</li></ol>", "=heading=\n1. item\n")
-    tc("<h1>heading</h1><ol><li>item</li></ol>", "=heading=\n\n1. item\n")
+    tc("<h1>heading</h1><ol><li>item</li>\n</ol>\n", "=heading=\n1. item\n")
+    tc("<h1>heading</h1><ol><li>item</li>\n</ol>\n", "=heading=\n\n1. item\n")
     # horizontal rule
     tc("<h1>heading</h1><hr/>", "=heading=\n----\n")
     tc("<h1>heading</h1><hr/>", "=heading=\n\n----\n")
@@ -671,8 +671,8 @@ describe TracWiki::Parser do
     tc("<h1>heading</h1><pre>nowiki</pre>", "=heading=\n{{{\nnowiki\n}}}\n")
     tc("<h1>heading</h1><pre>nowiki</pre>", "=heading=\n\n{{{\nnowiki\n}}}\n")
     # table
-    tc("<h1>heading</h1><table><tr><td>table</td></tr></table>", "=heading=\n||table||\n")
-    tc("<h1>heading</h1><table><tr><td>table</td></tr></table>", "=heading=\n\n||table||\n")
+    tc("<h1>heading</h1><table><tr><td>table</td>\n</tr>\n</table>\n", "=heading=\n||table||\n")
+    tc("<h1>heading</h1><table><tr><td>table</td>\n</tr>\n</table>\n", "=heading=\n\n||table||\n")
   end
 
   it 'should parse following paragraph' do
@@ -683,11 +683,11 @@ describe TracWiki::Parser do
     tc("<p>par par</p>\n", "par\npar\n")
     tc("<p>par</p>\n<p>par</p>\n", "par\n\npar\n")
     # unordered
-    tc("<p>par</p>\n<ul><li>item</li></ul>", "par\n* item")
-    tc("<p>par</p>\n<ul><li>item</li></ul>", "par\n\n* item")
+    tc("<p>par</p>\n<ul><li>item</li>\n</ul>\n", "par\n* item")
+    tc("<p>par</p>\n<ul><li>item</li>\n</ul>\n", "par\n\n* item")
     # ordered
-    tc("<p>par</p>\n<ol><li>item</li></ol>", "par\n1. item\n")
-    tc("<p>par</p>\n<ol><li>item</li></ol>", "par\n\n1. item\n")
+    tc("<p>par</p>\n<ol><li>item</li>\n</ol>\n", "par\n1. item\n")
+    tc("<p>par</p>\n<ol><li>item</li>\n</ol>\n", "par\n\n1. item\n")
     # horizontal
     tc("<p>par</p>\n<hr/>", "par\n----\n")
     tc("<p>par</p>\n<hr/>", "par\n\n----\n")
@@ -695,56 +695,56 @@ describe TracWiki::Parser do
     tc("<p>par</p>\n<pre>nowiki</pre>", "par\n{{{\nnowiki\n}}}\n")
     tc("<p>par</p>\n<pre>nowiki</pre>", "par\n\n{{{\nnowiki\n}}}\n")
     # table
-    tc("<p>par</p>\n<table><tr><td>table</td></tr></table>", "par\n||table||\n")
-    tc("<p>par</p>\n<table><tr><td>table</td></tr></table>", "par\n\n||table||\n")
+    tc("<p>par</p>\n<table><tr><td>table</td>\n</tr>\n</table>\n", "par\n||table||\n")
+    tc("<p>par</p>\n<table><tr><td>table</td>\n</tr>\n</table>\n", "par\n\n||table||\n")
   end
 
   it 'should parse following unordered list' do
     # heading
-    tc("<ul><li>item</li></ul><h1>heading</h1>", "* item\n=heading=")
-    tc("<ul><li>item</li></ul><h1>heading</h1>", "* item\n\n=heading=")
+    tc("<ul><li>item</li>\n</ul>\n<h1>heading</h1>", "* item\n=heading=")
+    tc("<ul><li>item</li>\n</ul>\n<h1>heading</h1>", "* item\n\n=heading=")
     # paragraph
-    tc("<ul><li>item par</li></ul>", "* item\npar\n") # items may span multiple lines
-    tc("<ul><li>item</li></ul><p>par</p>\n", "* item\n\npar\n")
+    tc("<ul><li>item par</li>\n</ul>\n", "* item\npar\n") # items may span multiple lines
+    tc("<ul><li>item</li>\n</ul>\n<p>par</p>\n", "* item\n\npar\n")
     # unordered
-    tc("<ul><li>item</li><li>item</li></ul>", "* item\n* item\n")
-    tc("<ul><li>item</li></ul><ul><li>item</li></ul>", "* item\n\n* item\n")
+    tc("<ul><li>item</li>\n<li>item</li>\n</ul>\n", "* item\n* item\n")
+    tc("<ul><li>item</li>\n</ul>\n<ul><li>item</li>\n</ul>\n", "* item\n\n* item\n")
     # ordered
-    tc("<ul><li>item</li></ul><ol><li>item</li></ol>", "* item\n1. item\n")
-    tc("<ul><li>item</li></ul><ol><li>item</li></ol>", "* item\n\n1. item\n")
+    tc("<ul><li>item</li>\n</ul>\n<ol><li>item</li>\n</ol>\n", "* item\n1. item\n")
+    tc("<ul><li>item</li>\n</ul>\n<ol><li>item</li>\n</ol>\n", "* item\n\n1. item\n")
     # horizontal rule
-    tc("<ul><li>item</li></ul><hr/>", "* item\n----\n")
-    tc("<ul><li>item</li></ul><hr/>", "* item\n\n----\n")
+    tc("<ul><li>item</li>\n</ul>\n<hr/>", "* item\n----\n")
+    tc("<ul><li>item</li>\n</ul>\n<hr/>", "* item\n\n----\n")
     # nowiki
-    tc("<ul><li>item</li></ul><pre>nowiki</pre>", "* item\n{{{\nnowiki\n}}}\n")
-    tc("<ul><li>item</li></ul><pre>nowiki</pre>", "* item\n\n{{{\nnowiki\n}}}\n")
+    tc("<ul><li>item</li>\n</ul>\n<pre>nowiki</pre>", "* item\n{{{\nnowiki\n}}}\n")
+    tc("<ul><li>item</li>\n</ul>\n<pre>nowiki</pre>", "* item\n\n{{{\nnowiki\n}}}\n")
     # table
-    tc("<ul><li>item</li></ul><table><tr><td>table</td></tr></table>", "* item\n||table||\n")
-    tc("<ul><li>item</li></ul><table><tr><td>table</td></tr></table>", "* item\n\n||table||\n")
+    tc("<ul><li>item</li>\n</ul>\n<table><tr><td>table</td>\n</tr>\n</table>\n", "* item\n||table||\n")
+    tc("<ul><li>item</li>\n</ul>\n<table><tr><td>table</td>\n</tr>\n</table>\n", "* item\n\n||table||\n")
   end
 
   it 'should parse following ordered list' do
     # heading
-    tc("<ol><li>item</li></ol><h1>heading</h1>", "1. item\n=heading=")
-    tc("<ol><li>item</li></ol><h1>heading</h1>", "1. item\n\n=heading=")
+    tc("<ol><li>item</li>\n</ol>\n<h1>heading</h1>", "1. item\n=heading=")
+    tc("<ol><li>item</li>\n</ol>\n<h1>heading</h1>", "1. item\n\n=heading=")
     # paragraph
-    tc("<ol><li>item par</li></ol>", "1. item\npar\n") # items may span multiple lines
-    tc("<ol><li>item</li></ol><p>par</p>\n", "1. item\n\npar\n")
+    tc("<ol><li>item par</li>\n</ol>\n", "1. item\npar\n") # items may span multiple lines
+    tc("<ol><li>item</li>\n</ol>\n<p>par</p>\n", "1. item\n\npar\n")
     # unordered
-    tc("<ol><li>item</li></ol><ul><li>item</li></ul>", "1. item\n* item\n")
-    tc("<ol><li>item</li></ol><ul><li>item</li></ul>", "1. item\n\n*   item\n")
+    tc("<ol><li>item</li>\n</ol>\n<ul><li>item</li>\n</ul>\n", "1. item\n* item\n")
+    tc("<ol><li>item</li>\n</ol>\n<ul><li>item</li>\n</ul>\n", "1. item\n\n*   item\n")
     # ordered
-    tc("<ol><li>item</li><li>item</li></ol>", "1. item\n2. item\n")
-    tc("<ol><li>item</li></ol><ol><li>item</li></ol>", "1. item\n\n1. item\n")
+    tc("<ol><li>item</li>\n<li>item</li>\n</ol>\n", "1. item\n2. item\n")
+    tc("<ol><li>item</li>\n</ol>\n<ol><li>item</li>\n</ol>\n", "1. item\n\n1. item\n")
     # horizontal role
-    tc("<ol><li>item</li></ol><hr/>", "1. item\n----\n")
-    tc("<ol><li>item</li></ol><hr/>", "1. item\n\n----\n")
+    tc("<ol><li>item</li>\n</ol>\n<hr/>", "1. item\n----\n")
+    tc("<ol><li>item</li>\n</ol>\n<hr/>", "1. item\n\n----\n")
     # nowiki
-    tc("<ol><li>item</li></ol><pre>nowiki</pre>", "1. item\n{{{\nnowiki\n}}}\n")
-    tc("<ol><li>item</li></ol><pre>nowiki</pre>", "1. item\n\n{{{\nnowiki\n}}}\n")
+    tc("<ol><li>item</li>\n</ol>\n<pre>nowiki</pre>", "1. item\n{{{\nnowiki\n}}}\n")
+    tc("<ol><li>item</li>\n</ol>\n<pre>nowiki</pre>", "1. item\n\n{{{\nnowiki\n}}}\n")
     # table
-    tc("<ol><li>item</li></ol><table><tr><td>table</td></tr></table>", "1. item\n||table||\n")
-    tc("<ol><li>item</li></ol><table><tr><td>table</td></tr></table>", "1. item\n\n||table||\n")
+    tc("<ol><li>item</li>\n</ol>\n<table><tr><td>table</td>\n</tr>\n</table>\n", "1. item\n||table||\n")
+    tc("<ol><li>item</li>\n</ol>\n<table><tr><td>table</td>\n</tr>\n</table>\n", "1. item\n\n||table||\n")
   end
 
   it 'should parse following horizontal rule' do
@@ -755,14 +755,14 @@ describe TracWiki::Parser do
     tc("<hr/><p>par</p>\n", "----\npar\n")
     tc("<hr/><p>par</p>\n", "----\n\npar\n")
     # unordered
-    tc("<hr/><ul><li>item</li></ul>", "----\n* item")
-    tc("<hr/><ul><li>item</li></ul>", "----\n* item")
-    tc("<hr/><ul><li>item</li></ul>", "----\n- item")
-    tc("<hr/><ul><li>item</li></ul>", "----\n- item")
-    tc("<hr/><ul><li>item</li></ul>", "----\n - item")
+    tc("<hr/><ul><li>item</li>\n</ul>\n", "----\n* item")
+    tc("<hr/><ul><li>item</li>\n</ul>\n", "----\n* item")
+    tc("<hr/><ul><li>item</li>\n</ul>\n", "----\n- item")
+    tc("<hr/><ul><li>item</li>\n</ul>\n", "----\n- item")
+    tc("<hr/><ul><li>item</li>\n</ul>\n", "----\n - item")
     # ordered
-    tc("<hr/><ol><li>item</li></ol>", "----\n1. item")
-    tc("<hr/><ol><li>item</li></ol>", "----\n1. item")
+    tc("<hr/><ol><li>item</li>\n</ol>\n", "----\n1. item")
+    tc("<hr/><ol><li>item</li>\n</ol>\n", "----\n1. item")
     # horizontal
     tc("<hr/><hr/>", "----\n----\n")
     tc("<hr/><hr/>", "----\n\n----\n")
@@ -770,8 +770,8 @@ describe TracWiki::Parser do
     tc("<hr/><pre>nowiki</pre>", "----\n{{{\nnowiki\n}}}\n")
     tc("<hr/><pre>nowiki</pre>", "----\n\n{{{\nnowiki\n}}}\n")
     # table
-    tc("<hr/><table><tr><td>table</td></tr></table>", "----\n||table||\n")
-    tc("<hr/><table><tr><td>table</td></tr></table>", "----\n\n||table||\n")
+    tc("<hr/><table><tr><td>table</td>\n</tr>\n</table>\n", "----\n||table||\n")
+    tc("<hr/><table><tr><td>table</td>\n</tr>\n</table>\n", "----\n\n||table||\n")
   end
 
   it 'should parse following nowiki block' do
@@ -782,11 +782,11 @@ describe TracWiki::Parser do
     tc("<pre>nowiki</pre><p>par</p>\n", "{{{\nnowiki\n}}}\npar")
     tc("<pre>nowiki</pre><p>par</p>\n", "{{{\nnowiki\n}}}\n\npar")
     # unordered
-    tc("<pre>nowiki</pre><ul><li>item</li></ul>", "{{{\nnowiki\n}}}\n* item\n")
-    tc("<pre>nowiki</pre><ul><li>item</li></ul>", "{{{\nnowiki\n}}}\n\n* item\n")
+    tc("<pre>nowiki</pre><ul><li>item</li>\n</ul>\n", "{{{\nnowiki\n}}}\n* item\n")
+    tc("<pre>nowiki</pre><ul><li>item</li>\n</ul>\n", "{{{\nnowiki\n}}}\n\n* item\n")
     # ordered
-    tc("<pre>nowiki</pre><ol><li>item</li></ol>", "{{{\nnowiki\n}}}\n1. item\n")
-    tc("<pre>nowiki</pre><ol><li>item</li></ol>", "{{{\nnowiki\n}}}\n\n1. item\n")
+    tc("<pre>nowiki</pre><ol><li>item</li>\n</ol>\n", "{{{\nnowiki\n}}}\n1. item\n")
+    tc("<pre>nowiki</pre><ol><li>item</li>\n</ol>\n", "{{{\nnowiki\n}}}\n\n1. item\n")
     # horizontal
     tc("<pre>nowiki</pre><hr/>", "{{{\nnowiki\n}}}\n----\n")
     tc("<pre>nowiki</pre><hr/>", "{{{\nnowiki\n}}}\n\n----\n")
@@ -794,8 +794,8 @@ describe TracWiki::Parser do
     tc("<pre>nowiki</pre><pre>nowiki</pre>", "{{{\nnowiki\n}}}\n{{{\nnowiki\n}}}\n")
     tc("<pre>nowiki</pre><pre>nowiki</pre>", "{{{\nnowiki\n}}}\n\n{{{\nnowiki\n}}}\n")
     # table
-    tc("<pre>nowiki</pre><table><tr><td>table</td></tr></table>", "{{{\nnowiki\n}}}\n||table||\n")
-    tc("<pre>nowiki</pre><table><tr><td>table</td></tr></table>", "{{{\nnowiki\n}}}\n\n||table||\n")
+    tc("<pre>nowiki</pre><table><tr><td>table</td>\n</tr>\n</table>\n", "{{{\nnowiki\n}}}\n||table||\n")
+    tc("<pre>nowiki</pre><table><tr><td>table</td>\n</tr>\n</table>\n", "{{{\nnowiki\n}}}\n\n||table||\n")
   end
 
   it 'should parse image' do
@@ -819,7 +819,7 @@ describe TracWiki::Parser do
   end
 
   it 'should parse bold combo' do
-    tc("<p><strong>bold and</strong></p>\n<table><tr><td>table</td></tr></table><p>end<strong></strong></p>\n",
+    tc("<p><strong>bold and</strong></p>\n<table><tr><td>table</td>\n</tr>\n</table>\n<p>end</p>\n",
        "**bold and\n||table||\nend**")
   end
 
@@ -897,6 +897,7 @@ kuk
 eos
 
 
+  end
   it 'should support macro' do
     tc "<p>ahoj</p>\n" , "{{#echo \nahoj\n}}"
     tc "<h2>H2</h2>" , "{{#echo == H2 ==}}"
@@ -999,7 +1000,13 @@ eos
     tc "<p><b class=\"bclass\">BOLD</b></p>\n", "<b bad=\"bad\" class=\"bclass\">BOLD</b>\n", raw_html: true
     tc "<p><b class=\"bclass\">BOLD</b></p>\n", "<b bad=\"bad\" class=\"bclass\">BOLD</b>\n", raw_html: true
   end
-
+  it 'should parse link' do
+    tc "<p><a href=\"#here\">Here</a></p>\n", "[[#here|Here]]"
+    tc "<p><a href=\"#here+i+m\">Here</a></p>\n", "[[#here i m|Here]]"
+    tc "<p><a href=\"there#i+m\">There</a></p>\n", "[[there#i m|There]]"
+    tc "<p><a href=\"http://example.com/there#i+m\">There</a></p>\n", "[[there#i m|There]]", base: 'http://example.com/'
+    tc "<p><a href=\"#here+i+m\">Here</a></p>\n", "[[#here i m|Here]]", base: 'http://example.com/'
   end
+
 end
 # vim: tw=0

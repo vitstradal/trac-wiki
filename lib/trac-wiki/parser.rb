@@ -282,9 +282,15 @@ module TracWiki
     # make_local_link("LocalLink") #=> "/LocalLink"
     # make_local_link("Wikipedia:Bread") #=> "http://en.wikipedia.org/wiki/Bread"
     def make_local_link(link) #:doc:
-      return "#{@base}#{link}" if no_escape?
+      # FIXME: xss when no_escape
       link, anch = link.split(/#/, 2)
+      if no_escape?
+        return "#{@base}#{link}" if ! anch
+        return "##{anch}" if  link == ''
+        return "#{@base}#{link}##{anch}"
+      end
       return "#{@base}#{escape_url(link)}" if ! anch
+      return "##{escape_url(anch)}" if  link == ''
       "#{@base}#{escape_url(link)}##{escape_url(anch)}"
     end
 
@@ -417,6 +423,7 @@ module TracWiki
           str = $'
           link, content, whole= $1, $3, $&
           make_link(link, content, "[#{whole}]")
+        #          [[     link1          | text2          ]]
         when /\A \[\[ \s* ([^|]*?) \s* (\|\s*(.*?))? \s* \]\] /mx
           str = $'
           link, content, whole= $1, $3, $&

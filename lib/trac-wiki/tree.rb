@@ -144,12 +144,22 @@ module TracWiki
      end
 
 
-     TAGS_APPEND_NL = [:div, :p]
-     TAGS_FORCE_PAIR = [:a, :td, :h1, :h2, :h3, :h4, :h5, :h6, :div, :strong, :script]
-     TAGS_ALLOVED = [:a, :h1, :h2, :h3, :h4, :h5, :h6, :div, :span, :p, :li, :ul, :ol, :b, :tt, :u, :del, :blockquote, :em, :dl, :dt, :dd, :table, :sup, :sub, :tr, :td, :th, :strong, :br , :img, :pre, :hr]
-     TAGS_SKIP_EMPTY = [ :p  ]
+     TAGS_APPEND_NL = [:div, :p, :li, :ol, :ul, :dl, :table, :tr, :td ]
+     TAGS_FORCE_PAIR = [:a, :td, :h1, :h2, :h3, :h4, :h5, :h6, :div, :script]
+     TAGS_ALLOVED = [:a,
+                     :h1, :h2, :h3, :h4, :h5, :h6,
+                     :div, :span, :p, :pre,
+                     :li, :ul, :ol, :dl, :dt, :dd,
+                     :b, :tt, :u, :del, :blockquote, :strong, :em, :sup, :sub,
+                     :table,  :tr, :td, :th,
+                     :br , :img, :hr,
+                     :form, :textarea, :input, :select, :option,
+     ]
+     TAGS_SKIP_EMPTY = [ :p , :ol, :li, :strong, :em  ]
      ATTRIBUTES_ALLOWED = { :form  =>  [:action, :meth],
-                            :input =>  [:type, :value],
+                            :input =>  [:size, :type, :value, :name],
+                            :select => [:multiple, :name],
+                            :option => [:disabled, :selected, :label, :value, :name],
                             :a     =>  [:name, :href],
                             :img   =>  [:src, :width, :height, :align, :valign, :style, :alt, :title],
                             :td    =>  [:colspan, :rowspan, :style],
@@ -168,7 +178,7 @@ module TracWiki
        attrs.each_pair do |k,v|
          next if v.nil?
          k_sym = k.to_sym
-         next if ! ATTRIBUTES_ALLOWED[:_all].include?(k_sym) && ! tag_attrs.include?(k_sym)
+         next if ! ( ATTRIBUTES_ALLOWED[:_all].include?(k_sym) || tag_attrs.include?(k_sym) )
          next if k == :style && v !~ ATTRIBUTE_STYLE_REX
          #print "style: #{v}\n" if k == :style
          ret.push "#{TracWiki::Parser.escapeHTML(k.to_s)}=\"#{TracWiki::Parser.escapeHTML(v.to_s)}\""
