@@ -48,6 +48,7 @@ end
 
 describe TracWiki::Parser do
   it 'should not parse linkd' do
+    tc "<p>[[ahoj]]</p>\n", "[ahoj]", :no_link => true
     tc "<p>[[ahoj]]</p>\n", "[[ahoj]]", :no_link => true
     tc "<p>[[ahoj|bhoj]]</p>\n", "[[ahoj|bhoj]]", :no_link => true
     tc "<ul><li>[[ahoj|bhoj]]</li>\n</ul>\n", "* [[ahoj|bhoj]]", :no_link => true
@@ -162,17 +163,17 @@ describe TracWiki::Parser do
   end
 
   it 'should parse math' do
-    tc "<p>\\( the \\)</p>\n", '$the$', math: true
-    tc "<p>test \\( the \\) west</p>\n", 'test $the$ west', math: true
-    tc "<p>test \\( e^{i\\pi} \\) test</p>\n", 'test $e^{i\pi}$ test', math: true
+    tc "<p><span class=\"math\">the</span></p>\n", '$the$', math: true
+    tc "<p>test <span class=\"math\">the</span> west</p>\n", 'test $the$ west', math: true
+    tc "<p>test <span class=\"math\">e^{i\\pi}</span> test</p>\n", 'test $e^{i\pi}$ test', math: true
     tc "<p>test $ e<sup>{i\\pi} test</sup></p>\n", 'test $ e^{i\pi} test', math: true
     tc "<p>$the$</p>\n", '$the$', math: false
 
-    tc "<p>ahoj</p>\n$$e^{i\\pi}$$\n<p>nazdar</p>\n", "ahoj\n$$e^{i\\pi}$$\nnazdar", math: true
+    tc "<p>ahoj</p>\n<div class=\"math\">e^{i\\pi}</div>\n<p>nazdar</p>\n", "ahoj\n$$e^{i\\pi}$$\nnazdar", math: true
     tc "<p>ahoj $$e<sup>{i\\pi}$$ nazdar</sup></p>\n", "ahoj\n$$e^{i\\pi}$$\nnazdar", math: false
 
-    tc "$$\\\\$$\n", "$$\\\\$$", math: true
-    tc "$$\n^test\n$$\n", "$$\n^test\n$$", math: true
+    tc "<div class=\"math\">\\\\</div>\n", "$$\\\\$$", math: true
+    tc "<div class=\"math\">\n^test\n</div>\n", "$$\n^test\n$$", math: true
 
     tc "<p>$a<sup>b</sup>c$</p>\n", "!$a^b^c$", math: true
     tc "<p>$a<strong>b</strong>c$</p>\n", "!$a**b**c$", math: true
@@ -228,6 +229,10 @@ describe TracWiki::Parser do
   it 'should parse links' do
     #  Links
     tc "<p><a href=\"link\">link</a></p>\n", "[[link]]"
+    tc "<p><a href=\"link\">Flink</a></p>\n", "[[link|Flink]]"
+
+    # FIXME: http://trac.edgewall.org/wiki/TracLinks: this is wrong
+    #tc "<p><a href=\"link\">Flink</a></p>\n", "[link Flink]"
     tc "<p><a href=\"BASE/link\">link</a></p>\n", "[[link]]",  base: 'BASE'
     tc "<p><a href=\"BASE/link\">link</a></p>\n", "[[link]]",  base: 'BASE/'
     tc "<p><a href=\"link#link\">link#link</a></p>\n", "[[link#link]]"
@@ -1006,6 +1011,12 @@ eos
     tc "<p><a href=\"there#i+m\">There</a></p>\n", "[[there#i m|There]]"
     tc "<p><a href=\"http://example.com/there#i+m\">There</a></p>\n", "[[there#i m|There]]", base: 'http://example.com/'
     tc "<p><a href=\"#here+i+m\">Here</a></p>\n", "[[#here i m|Here]]", base: 'http://example.com/'
+  end
+  it 'should parse dnl inside macro' do
+    tc "<p>d<blockquote>e</blockquote></p>\n", "{{!ifeq a|b|c|d\n e}}"
+    tc "<p>d e</p>\n", "{{!ifeq a|b|c|d\\\n e}}"
+    tc "<p>d<strong>e</strong></p>\n", "{{!ifeq a|b|c|d**\\\ne**}}"
+    tc "<p>d<strong>e</strong></p>\n", "{{!ifeq a|b|c|d*\\\n*e**}}"
   end
 
 end

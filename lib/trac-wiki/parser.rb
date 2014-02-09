@@ -479,9 +479,8 @@ module TracWiki
       when str =~ /\A`(.*?)`/                  # inline pre (tt)
         @tree.tag(:tt, $1)
       when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
-        @tree.add("\\( #{$1} \\)")
-        #@tree.add("$#{$1}$")
-        #@tree.tag(:span, {class:'math'},  $1)
+        #@tree.add("\\( #{$1} \\)")
+        @tree.tag(:span, {class:'math'},  $1)
         @was_math = true
       when str =~ /\A(\&\w*;)/       # html entity 
         #print "add html ent: #{$1}\n"
@@ -646,7 +645,8 @@ module TracWiki
 
     def do_math(text)
       end_paragraph
-      @tree.add("$$#{text}$$\n")
+      #@tree.add("$$#{text}$$\n")
+      @tree.tag(:div, {class:'math'}, text)
       @was_math = true
     end
     def do_merge(merge_type, who)

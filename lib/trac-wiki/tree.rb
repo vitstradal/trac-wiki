@@ -164,7 +164,7 @@ module TracWiki
                             :img   =>  [:src, :width, :height, :align, :valign, :style, :alt, :title],
                             :td    =>  [:colspan, :rowspan, :style],
                             :th    =>  [:colspan, :rowspan, :style],
-                            :_all  =>  [:class, :id],
+                            :_all  =>  [:class, :title, :id],
                            }
 
      ATTRIBUTE_STYLE_REX = /\A( text-align:(center|right|left) |

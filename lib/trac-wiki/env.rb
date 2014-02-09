@@ -1,3 +1,4 @@
+# encoding: utf-8
 module TracWiki
 
   class Env
@@ -208,7 +209,7 @@ module TracWiki
       env  = { 'arg' => arg , depth: (depth||0) + 1  }
       idx = 1
       arg.split(/\|/).each do |val|
-        if val =~ /\A\s*(\w+)\s*=\s*(.*)/s
+        if val =~ /\A\s*(\w+)\s*=\s*(.*)/m
           env[$1] = $2
         else
           env[idx.to_s] = val
@@ -249,7 +250,7 @@ module TracWiki
       end
       #print "text: #{text.nil?}\n"
       #print "ret: #{ret.nil?}\n"
-      return ret + str
+      return ret + str.gsub(/\\\r?\n/, '')
     end
   end
 
