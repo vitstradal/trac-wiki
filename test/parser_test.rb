@@ -608,9 +608,9 @@ describe TracWiki::Parser do
 
     tc "<table><tr><td>Hello, World!</td>\n</tr>\n</table>\n", "||Hello, World!||"
     tc "<table><tr><td style=\"text-align:right\">Hello, Right World!</td>\n</tr>\n</table>\n", "|| Hello, Right World!||"
-    tc "<table><tr><th style=\"text-align:right\">Hello, Right World!</th></tr>\n</table>\n", "||= Hello, Right World!=||"
+    tc "<table><tr><th style=\"text-align:right\">Hello, Right World!</th>\n</tr>\n</table>\n", "||= Hello, Right World!=||"
     tc "<table><tr><td style=\"text-align:center\">Hello, Centered World!</td>\n</tr>\n</table>\n", "||    Hello, Centered World!  ||"
-    tc "<table><tr><th style=\"text-align:center\">Hello, Centered World!</th></tr>\n</table>\n", "||=    Hello, Centered World!  =||"
+    tc "<table><tr><th style=\"text-align:center\">Hello, Centered World!</th>\n</tr>\n</table>\n", "||=    Hello, Centered World!  =||"
     # Multiple columns
     tc "<table><tr><td>c1</td>\n<td>c2</td>\n<td>c3</td>\n</tr>\n</table>\n", "||c1||c2||c3||"
     # Multiple rows
@@ -626,7 +626,7 @@ describe TracWiki::Parser do
     tc "<table><tr><td>c1</td>\n<td>c2|</td>\n</tr>\n</table>\n", "||c1||c2!|"
     tc "<table><tr><td>c1</td>\n<td>c2|</td>\n<td></td>\n</tr>\n</table>\n", "||c1||c2| || ||"
     # Equal sign after pipe make a header
-    tc "<table><tr><th>Header</th></tr>\n</table>\n", "||=Header=||"
+    tc "<table><tr><th>Header</th>\n</tr>\n</table>\n", "||=Header=||"
 
     tc "<table><tr><td>c1</td>\n<td><a href=\"Link\">Link text</a></td>\n<td><img src=\"Image\"/></td>\n</tr>\n</table>\n", "||c1||[[Link|Link text]]||[[Image(Image)]]||"
     tc "<table><tr><td>c1</td>\n<td><a href=\"Link\">Link text</a></td>\n<td><img src=\"Image\"/></td>\n</tr>\n</table>\n", "||c1||[Link|Link text]||[[Image(Image)]]||"
@@ -978,6 +978,8 @@ eos
     tc "<p>,(ALFA),(BETA),</p>\n", "{{!yset data|[ALFA,BETA]}},{{!for i|data|({{$data.$i}}),}}"
     tc "<p>,(1),(2),</p>\n", "{{!yset data|[1,2]}},{{!for i|data|({{$data.$i}}),}}"
     tc "<p>,(alfa:ALFA),(beta:BETA),</p>\n", "{{!yset data|beta: BETA\nalfa: ALFA\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
+    tc "<p>,(0:1),(1:2),</p>\n", "{{!yset data|[ 1,2 ]\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
+    tc "<p>,</p>\n", "{{!yset data|[  ]\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
 
     tc "<p>,FALSE</p>\n", "{{!yset data|[1,2]}},{{!ifdef data.55|TRUE|FALSE}}"
     tc "<p>,TRUE</p>\n", "{{!yset data|[1,2]}},{{!ifdef data.1|TRUE|FALSE}}"
@@ -1014,9 +1016,36 @@ eos
   end
   it 'should parse dnl inside macro' do
     tc "<p>d<blockquote>e</blockquote></p>\n", "{{!ifeq a|b|c|d\n e}}"
-    tc "<p>d e</p>\n", "{{!ifeq a|b|c|d\\\n e}}"
+    tc "<p>de</p>\n", "{{!ifeq a|b|c|d\\\n e}}"
     tc "<p>d<strong>e</strong></p>\n", "{{!ifeq a|b|c|d**\\\ne**}}"
     tc "<p>d<strong>e</strong></p>\n", "{{!ifeq a|b|c|d*\\\n*e**}}"
+    tc "<p>d<strong>e</strong></p>\n", "{{!ifeq a|b|c|d*\\\r\n*e**}}"
+    tc "<p>e</p>\n", "{{!ifeq a|b|c|\\\r\ne}}"
+    tc "<p>a0a1a2</p>\n", "{{!for i|3|a\\\n{{$i}}}}"
+    tc "<p>a0a1a2</p>\n", "{{!for i|3|a\\\n   {{$i}}}}"
+  end
+  it 'should parse offset' do
+    tc "<p>0</p>\n", "{{$offset}}"
+    tc "<p>12345-6</p>\n", "12345-{{$offset}}"
+    tc "<p><strong>B</strong>-6</p>\n", "**B**-{{$offset}}"
+    tc "<p><a href=\"L\">L</a>-6</p>\n", "[[L]]-{{$offset}}"
+    tc "<p><a href=\"L\">4</a></p>\n", "[[L|{{$offset}}]]"
+    tc "<p><a href=\"L\">3</a></p>\n", "[L|{{$offset}}]"
+    tc "<p><strong>B</strong><a href=\"L\">9</a></p>\n", "**B**[[L|{{$offset}}]]"
+    tc "<ul><li>2</li>\n</ul>\n", "* {{$offset}}"
+    tc "<h1>2</h1>", "= {{$offset}} ="
+    tc "<h1><strong>B</strong> 8</h1>", "= **B** {{$offset}} ="
+    tc "<p>bla</p>\n<h1><strong>B</strong> 8</h1>", "bla\n= **B** {{$offset}} ="
+    tc "<p><blockquote>2</blockquote></p>\n", "  {{$offset}}"
+    tc "<table><tr><td>ahoj</td>\n<td>11</td>\n</tr>\n</table>\n", "|| ahoj || {{$offset}} ||"
+    tc "<table><tr><td>ahoj</td>\n<td>13</td>\n</tr>\n</table>\n", "|| ahoj ||   {{$offset}} ||"
+    tc "<table><tr><td>3</td>\n</tr>\n</table>\n", "|| {{$offset}} ||"
+    tc "<table><tr><th>3</th>\n</tr>\n</table>\n", "||={{$offset}}=||"
+    tc "<table><tr><th>4</th>\n</tr>\n</table>\n", "||= {{$offset}} =||"
+    tc "<table><tr><td style=\"text-align:right\">3</td>\n</tr>\n</table>\n", "|| {{$offset}}||"
+    tc "<table><tr><td style=\"text-align:center\">4</td>\n</tr>\n</table>\n", "||  {{$offset}}    ||"
+    tc "<p><blockquote>2</blockquote></p>\n", "> {{$offset}}"
+    tc "<p><blockquote>2<blockquote>6</blockquote></blockquote></p>\n", "> {{$offset}}\n> >   {{$offset}}"
   end
 
 end

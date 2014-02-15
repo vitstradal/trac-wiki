@@ -144,7 +144,7 @@ module TracWiki
      end
 
 
-     TAGS_APPEND_NL = [:div, :p, :li, :ol, :ul, :dl, :table, :tr, :td ]
+     TAGS_APPEND_NL = [:div, :p, :li, :ol, :ul, :dl, :table, :tr, :td , :th]
      TAGS_FORCE_PAIR = [:a, :td, :h1, :h2, :h3, :h4, :h5, :h6, :div, :script]
      TAGS_ALLOVED = [:a,
                      :h1, :h2, :h3, :h4, :h5, :h6,

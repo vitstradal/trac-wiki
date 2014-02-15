@@ -250,7 +250,8 @@ module TracWiki
       end
       #print "text: #{text.nil?}\n"
       #print "ret: #{ret.nil?}\n"
-      return ret + str.gsub(/\\\r?\n/, '')
+      ret += str
+      return ret.gsub(/\\\r?\n\s*/, '')
     end
   end
 
