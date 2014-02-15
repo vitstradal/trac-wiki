@@ -31,6 +31,12 @@ class Bacon::Context
       "WEST"
     when 'deep'
       "{{deep}}"
+    when 'nl'
+       "line one\nline two\n"
+    when 'nl2'
+       "* line one\n* line two\n"
+    when 'mlentest'
+       "mlen:{{$mlen}}"
     when 'wide'
       "0123456789{{wide}}" * 10
     else
@@ -929,7 +935,7 @@ eos
     tc "<p>2WEST</p>\n", "2{{test}}"
 
     # macro errors:
-    tc "<p>TOO_DEEP_RECURSION(<tt>{{deep}}</tt>) 3</p>\n", "{{deep}}3"
+    tc "<p>TOO_DEEP_RECURSION(<tt>{{deep}}</tt>)3</p>\n", "{{deep}}3"
     tc "<p>TOO_LONG_EXPANSION_OF_MACRO(wide)QUIT</p>\n", "{{wide}}3"
     tc "<p>UMACRO(unknown|)3</p>\n", "{{unknown}}3"
   end
@@ -938,8 +944,7 @@ eos
     tc "<p>jedna:VARTESTPARAM,dve:TRI,p:DVE,arg:VARTESTPARAM|p=DVE|TRI</p>\n", "{{vartest VARTESTPARAM|p=DVE|TRI}}"
     tc "<p>jedna:VARTESTPARAM,dve:TRI,p:DVE,arg:VARTESTPARAM|TRI|p=DVE|tridef</p>\n", "{{vartest2 VARTESTPARAM|p=DVE|dva=TRI}}"
     tc "<p>ahoj |</p>\n", "ahoj {{!}}"
-    #FIXME: should be: '... jedna:be||no to be,dve: ..'
-    tc "<p>jedna:be,dve:,p:,arg:be||not to be</p>\n", "{{vartest be{{!}}{{!}}not to be}}"
+    tc "<p>jedna:be||not to be,dve:,p:,arg:be||not to be</p>\n", "{{vartest be{{!}}{{!}}not to be}}"
   end
   it 'should support options' do
     tc "<h3>h1<a class=\"editheading\" href=\"?edit=1\">edit</a></h3>", "=== h1 ==", edit_heading: true
@@ -1046,7 +1051,44 @@ eos
     tc "<table><tr><td style=\"text-align:center\">4</td>\n</tr>\n</table>\n", "||  {{$offset}}    ||"
     tc "<p><blockquote>2</blockquote></p>\n", "> {{$offset}}"
     tc "<p><blockquote>2<blockquote>6</blockquote></blockquote></p>\n", "> {{$offset}}\n> >   {{$offset}}"
+    tc "<p>test:5,17</p>\n", "test:{{$offset}},{{$offset}}"
+    tc "<p>test:5,17,<strong>31</strong></p>\n", "test:{{$offset}},{{$offset}},**{{$offset}}**"
   end
-
+  it 'should parse offset and template' do
+    tc "<p>ahoj ahoj,19</p>\n" , "ahoj {{$mac|ahoj}},{{$offset}}"
+    tc "<p>ahoj line one line two ,12</p>\n" , "ahoj {{nl}},{{$offset}}"
+    tc "<ul><li>line one</li>\n<li>line two,8</li>\n</ul>\n" , "{{nl2}},{{$offset}}"
+    tc "<ul><li>line one</li>\n<li>line two 8</li>\n</ul>\n" , "{{nl2}} {{$offset}}"
+    # in the future:
+    #tc "<p>ble * line one</p>\n<ul><li>line two 8</li>\n</ul>\n" , "ble {{nl2}} {{$offset}}"
+  end
+  it 'should parse macro len' do
+    tc "<p>9</p>\n" , "{{$mlen}}"
+    tc "<p>15</p>\n" , "{{$mlen|12345}}"
+    tc "<p>16</p>\n" , "{{$mlen| 12345}}"
+    tc "<p>17</p>\n" , "{{$mlen | 12345}}"
+    tc "<p>16</p>\n" , "{{$mlen |12345}}"
+    tc "<p>16</p>\n" , "{{$mlen |12345}}"
+    tc "<p>13</p>\n" , "{{$mlen|kuk}}"
+    tc "<p>13</p>\n" , "{{$mlen|123}}"
+    tc "<p>33</p>\n" , "{{$mlen|{{$mlen}}{{!echo ahoj}}}}"
+    tc "<p><strong>33</strong></p>\n" , "**{{$mlen|{{$mlen}}{{!echo ahoj}}}}**"
+    tc "<p>26</p>\n" , "{{$mlen|a=e|b=c|d={{$e}}}}"
+    tc "<p>mlen:12</p>\n" , "{{mlentest}}"
+  end
+  it 'should parse lineno' do
+    tc "<p>1</p>\n" , "{{$lineno}}"
+    tc "<p>3</p>\n" , "\n\n{{$lineno}}"
+    tc "<p><strong>ahoj</strong></p>\n<p>4</p>\n" , "**ahoj**\n\n\n{{$lineno}}"
+    tc "<pre>ahoj</pre><p>4</p>\n" , "{{{\nahoj\n}}}\n{{$lineno}}"
+    tc "<div class=\"math\">\nahoj\n</div>\n<p>4</p>\n" , "$$\nahoj\n$$\n{{$lineno}}", math: true
+    tc "<p>WEST WEST 3</p>\n" , "{{test}}\n{{test}}\n{{$lineno}}"
+    tc "<p>WEST 2</p>\n" , "{{test}}\n{{$lineno}}"
+    tc "<p>line one line two 1</p>\n" , "{{nl}} {{$lineno}}"
+    tc "<ul><li>line one</li>\n<li>line two 1</li>\n</ul>\n" , "{{nl2}} {{$lineno}}"
+    tc "<ul><li>line one</li>\n<li>line two 2</li>\n</ul>\n" , "{{nl2}}\n{{$lineno}}"
+    tc "<ul><li>line one</li>\n<li>line twoline one line two 3</li>\n</ul>\n" , "\n{{nl2}}{{nl}}\n{{$lineno}}"
+    tc "<h2>ahoj</h2><p>2</p>\n<h2>ahoj</h2><p>5</p>\n", "==ahoj==\n{{$lineno}}\n\n==ahoj==\n{{$lineno}}"
+  end
 end
 # vim: tw=0

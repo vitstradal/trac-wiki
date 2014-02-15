@@ -110,6 +110,7 @@ module TracWiki
       @base = ''
       options.each_pair {|k,v| send("#{k}=", v) }
       @base += '/' if !@base.empty? && @base[-1] != '/'
+      @count_lines_level = 0
     end
 
     def init_plugins
@@ -167,6 +168,9 @@ module TracWiki
     # parser = Parser.new("**Hello //World//**")
     # parser.to_html
     # #=> "<p><strong>Hello <em>World</em></strong></p>"
+    def add_line_no(count)
+      @line_no += count if @count_lines_level == 0
+    end
     def to_html
       @tree = TracWiki::Tree.new
       @edit_heading_class = 'editheading'
@@ -253,10 +257,10 @@ module TracWiki
       @p = false
     end
 
-    def start_paragraph
+    def start_paragraph(add_spc = true)
       if @p
         #FIXME: multiple space s
-        @tree.add_spc
+        @tree.add_spc if add_spc
       else
         end_paragraph
         start_tag('p')
@@ -400,37 +404,73 @@ module TracWiki
     end
 
     def parse_inline(str, offset)
+      raise "offset is nil" if offset.nil?
       until str.empty?
-        case str
+        case
         # raw url http://example.com/
-        when /\A(!)?((https?|ftps?):\/\/\S+?)(?=([\]\,.?!:;"'\)]+)?(\s|$))/
-          if $1
-            @tree.add($2)
-          else
-            if uri = make_direct_link($2)
-              @tree.tag(:a, {href:uri}, $2)
-            else
-              @tree.add($&)
-            end
-          end
+        when str =~ /\A(!)?((https?|ftps?):\/\/\S+?)(?=([\]\,.?!:;"'\)]+)?(\s|$))/
+          notlink, link = $1, $2
+          make_link(link, nil, link, 0, !!notlink)
         # [[Image(pic.jpg|tag)]]
-        when /\A\[\[Image\(([^,]*?)(,(.*?))?\)\]\]/   # image 
+        when str =~ /\A\[\[Image\(([^,]*?)(,(.*?))?\)\]\]/   # image 
           make_image($1, $3)
         # [[link]]
         #          [     link2          | text5          ]
-        when /\A (\[ \s* ([^\[|]*?) \s*) ((\|\s*)(.*?))? \s* \] /mx
-          str = $'
+        when str =~ /\A (\[ \s* ([^\[|]*?) \s*) ((\|\s*)(.*?))? \s* \] /mx
           link, content, content_offset, whole  = $2, $5, $1.size + ($4||'').size, $&
-          #print "link: #{content_offset} '#{$1}', '#{$4||''}'\n"
           make_link(link, content, "[#{whole}]",offset + content_offset)
         #          [[     link2          | text5          ]]
-        when /\A (\[\[ \s* ([^|]*?) \s*) ((\|\s*)(.*?))? \s* \]\] /mx
+        when  str =~ /\A (\[\[ \s* ([^|]*?) \s*) ((\|\s*)(.*?))? \s* \]\] /mx
           link, content, content_offset, whole= $2, $5, $1.size + ($4||'').size, $&
           #print "link: #{content_offset} of:#{offset}, '#{$1}', '#{$4||''}'\n"
           make_link(link, content, whole, offset + content_offset)
-        else
-          str, offset = parse_inline_tag(str, offset)
+        when raw_html? && str =~ /\A<(\/)?(\w+)(?:([^>]*?))?(\/\s*)?>/     # single inline <html> tag
+          eot, tag, args, closed = $1, $2, $3, $4
+          do_raw_tag(eot, tag, args, closed, $'.size)
+        when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline {{{ }}} pre (tt)
+          @tree.tag(:tt, $1)
+        when str =~ MACRO_BEG_REX                # macro  {{
+          mac, str, lines, offset = parse_macro($1, $', offset, $&.size)
+          parse_inline(mac.gsub(/\n/,  ' '),0);
+          #print "MACRO.inline(#{$1}), next:#{str}"
+          #return str, offset
           next
+        when str =~ /\A`(.*?)`/                  # inline pre (tt)
+          @tree.tag(:tt, $1)
+        when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
+          @tree.tag(:span, {:class => 'math'},  $1)
+          @was_math = true
+        when str =~ /\A(\&\w*;)/       # html entity 
+          #print "add html ent: #{$1}\n"
+          @tree.add_raw($1)
+        when str =~ /\A([:alpha:]|[:digit:])+/
+          @tree.add($&)                      # word
+        when str =~ /\A\s+/
+          @tree.add_spc
+        when str =~ /\A'''''/
+          toggle_tag 'strongem', $&       # bolditallic
+        when str =~ /\A\*\*/ || str =~ /\A'''/
+          toggle_tag 'strong', $&         # bold
+        when str =~ /\A''/ || str =~ /\A\/\//
+          toggle_tag 'em', $&             # italic
+        when str =~ /\A\\\\/ || str =~ /\A\[\[br\]\]/i
+          @tree.tag(:br)                  # newline
+        when str =~ /\A__/
+          toggle_tag 'u', $&              # underline
+        when str =~ /\A~~/
+          toggle_tag 'del', $&            # delete
+        when str =~ /\A~/
+          @tree.add_raw('&nbsp;')         # tilde
+#       when /\A\+\+/
+#         toggle_tag 'ins', $&           # insert
+        when str =~ /\A\^/
+          toggle_tag 'sup', $&            # ^{}
+        when str =~ /\A,,/
+          toggle_tag 'sub', $&            # _{}
+        when str =~ /\A!(\{\{|[^\s])/
+          @tree.add($1)                   # !neco !{{
+        when str =~ /\A./
+          @tree.add($&)                   # ordinal char
         end
         str = $'
         offset += $&.size
@@ -438,37 +478,8 @@ module TracWiki
       return offset
     end
 
-    def make_link(link, content, whole, offset)
-      # specail "link" [[BR]]:
-      if link =~ /^br$/i
-        @tree.tag(:br)
-        return
-      end
-      uri = make_explicit_link(link)
-      if not uri
-        @tree.add(whole)
-        return
-      end
-
-      if no_link?
-        if uri !~ /^(ftp|https?):/
-          @tree.add(whole)
-          return
-        end
-      end
-
-      @tree.tag_beg(:a, {href:uri})
-      if content
-        until content.empty?
-          content, offset  = parse_inline_tag(content, offset)
-        end
-      else
-          @tree.add(link)
-      end
-      @tree.tag_end(:a)
-    end
-
     def parse_inline_tag(str, offset)
+      raise "offset is nil" if offset.nil?
       case
       when raw_html? && str =~ /\A<(\/)?(\w+)(?:([^>]*?))?(\/\s*)?>/     # single inline <html> tag
         eot, tag, args, closed = $1, $2, $3, $4
@@ -476,9 +487,10 @@ module TracWiki
       when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline {{{ }}} pre (tt)
         @tree.tag(:tt, $1)
       when str =~ MACRO_BEG_REX                # macro  {{
-        str, lines = parse_macro($1, $', offset)
+        mac, str, lines, offset = parse_macro($1, $', offset, $&.size)
+        parse_inline(mac.gsub(/\n/,  ' '),0);
         #print "MACRO.inline(#{$1}), next:#{str}"
-        return str
+        return str, offset
       when str =~ /\A`(.*?)`/                  # inline pre (tt)
         @tree.tag(:tt, $1)
       when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
@@ -521,34 +533,63 @@ module TracWiki
 #      else
 #        return str[0..-1], offset + 1
       end
-      return $', (offset||0) + $&.size
+      #print "one: #{offset}, #{$&.size}, '#{$&}'\n"
+      return $', offset + $&.size
     end
 
     #################################################################
     # macro {{ }}
     #  convetntion {{!cmd}} {{template}} {{$var}} {{# comment}} {{!}} (pipe)
 
-    # r: expanded macro + rest of str, count lines taken from str
+    # r: expanded macro , rest of str, count lines taken from str
     # sideefect: parse result of macro
-    def parse_macro(macro_name, str, offset)
+    def parse_macro(macro_name, str, offset, macro_name_size)
+      raise "offset is nil" if offset.nil?
+      raise "offset is nil" if macro_name_size.nil?
       @env = Env.new(self) if @env.nil?
       @env.atput('offset',  offset)
+      @env.atput('lineno',  @line_no)
       begin
-        mac_out, rest, lines = @env.parse_macro_all(macro_name, str)
+        mac_out, rest, lines, rest_offset = @env.parse_macro_all(macro_name, str, macro_name_size)
+        raise "lines is nil" if lines.nil?
         #print "mac: '#{mac_out}' rest: '#{rest}'\n"
-        return mac_out + rest, lines
+        #print  "mac: ro #{rest_offset}, of#{offset}, lines: #{lines} ms: #{macro_name_size} strlen#{str.size}, str'#{str}' rest:'#{rest}'\n"
+        rest_offset += offset + macro_name_size if lines == 0
+        #print "ro#{rest_offset}\n"
+        return mac_out, rest, lines, rest_offset
       rescue  TooLongException => e
-        return "TOO_LONG_EXPANSION_OF_MACRO(#{macro_name})QUIT", 0
+        return '', "TOO_LONG_EXPANSION_OF_MACRO(#{macro_name})QUIT", 0, 0
       rescue  Exception => e
-        @tree.tag(:span, {:title => e.to_s, :class=>'parse-error'}, "!!!")
-        return "", 0
+        #@tree.tag(:span, {:title => "#{e}\", :class=>'parse-error'}, "!!!")
+        @tree.tag(:span, {:title => "#{e}\n#{e.backtrace}", :class=>'parse-error'}, "!!!")
+        print "tace#{e.backtrace.to_s}\n"
+        return '', '', 0, 0
       end
     end
 
-
-
     #################################################################
 
+    def make_link(link, content, whole, offset, not_make_link = false )
+      # was '!' before url?
+      return @tree.add(whole) if not_make_link
+
+      # specail "link" [[BR]]:
+      return @tree.tag(:br) if link =~ /^br$/i
+
+      uri = make_explicit_link(link)
+      return @tree.add(whole) if not uri
+      return @tree.add(whole) if no_link? && uri !~ /^(ftp|https?):/
+
+      @tree.tag_beg(:a, {href:uri})
+      if content
+         parse_inline(content, offset)
+      else
+          @tree.add(link)
+      end
+      @tree.tag_end(:a)
+    end
+
+    #################################################################
 
     def parse_table_row(str)
       offset = 0;
@@ -598,7 +639,7 @@ module TracWiki
       input.gsub(/^ (?=\}\}\})/, '')
     end
 
-    def parse_li_line(spc_size, bullet, text, offset)
+    def parse_li_line(spc_size, bullet)
 
       while !@stacki.empty? && @stacki.last >  spc_size
         end_tag
@@ -638,7 +679,6 @@ module TracWiki
       end
 
       start_tag('li')
-      parse_inline(text, offset)
 
     end
 
@@ -735,44 +775,48 @@ module TracWiki
       start_tag('dd')
     end
 
-    def do_citation(level, quote, offset)
+    def do_citation(level)
       start_paragraph if !@stack.include? 'p'
       blockquote_level_to(level)
-      parse_inline(quote.strip, offset)
     end
 
-    def do_ord_line(spc_size, text)
-      text.rstrip!
-      offset = spc_size
+    def do_ord_line(spc_size)
 
       if @stack.include?('li') || @stack.include?('dl')
 
         # dl, li continuation
         parse_inline(' ', 0)
-        parse_inline(text, offset)
 
       elsif spc_size > 0
         # quote continuation
         start_paragraph if !@stack.include? 'p'
         blockquote_level_to(1)
-        parse_inline(text, offset)
 
       else
         # real ordinary line
         start_paragraph
-        parse_inline(text, offset)
       end
     end
 
-    def parse_block(str)
+    def parse_block(str, want_end_paragraph = true)
       #print "BLOCK.str(#{str})\n"
       until str.empty?
         case
         # macro
         when str =~ MACRO_BEG_REX
-          str, lines = parse_macro($1, $', 0)
-          #print "MACRO.block(#{$1})next:#{str}\n"
-          @line_no += lines
+          mac, str, lines, offset = parse_macro($1, $', 0, $&.size)
+          raise 'lines is nil' if lines.nil?
+          raise 'offset is nil' if offset.nil?
+          #print "MACRO.lines(#{$1})lines:#{lines}, str:'#{str}'\n"
+          add_line_no(lines)
+          @count_lines_level +=1
+          parse_block(mac, false)
+          @count_lines_level -=1
+          if mac.size > 0 && str =~ /^(.*)(\r?\n)?/
+            line, str = $1 , $'
+            add_line_no($&.count("\n"))
+            parse_inline(line, offset)
+          end
           next
         # display math $$
         when math? && str =~ /\A\$\$(.*?)\$\$/m
@@ -800,20 +844,24 @@ module TracWiki
           do_term($1)
         # li
         when str =~ /\A((\s*)([*-]|[aAIi\d]\.)\s+)(.*?)$(\r?\n)?/
-          parse_li_line($2.size, $3, $4, $1.size)
+          parse_li_line($2.size, $3)
+          parse_inline($4, $1.size)
         # citation
         when str =~ /\A(>[>\s]*)(.*?)$(\r?\n)?/
-          do_citation($1.count('>'), $2, $1.size)
+          do_citation($1.count('>'))
+          parse_inline($2, $1.size)
         # ordinary line
         when str =~ /\A(\s*)(\S+.*?)$(\r?\n)?/
-          do_ord_line($1.size, $2)
+          text = $2
+          do_ord_line($1.size)
+          parse_inline(text.rstrip, $1.size)
         else # case str
           raise "Parse error at #{str[0,30].inspect}"
         end
-        @line_no += ($`).count("\n")+($&).count("\n")
+        add_line_no(($`).count("\n")+($&).count("\n"))
         str = $'
       end
-      end_paragraph
+      end_paragraph if want_end_paragraph
       @headings.last[:eline] = @line_no - 1
     end
 
