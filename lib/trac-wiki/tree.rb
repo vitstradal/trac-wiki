@@ -111,10 +111,6 @@ module TracWiki
 
      def to_html
        ret = tree_to_html(@root)
-       #print "bf san:", ret, "\n"
-       #ret = Sanitize.clean(ret, san_conf)
-       #print "af san:", ret, "\n"
-       #ret + "\n"
        ret
      end
      def tree_to_html(node)
@@ -199,25 +195,25 @@ module TracWiki
         end.join('')
       end
 
-     def san_conf
-        return @san_conf if @san_conf
-        conf = { elements:   ['tt', 'form', 'input', 'span', 'div'],
-                 output: :xhtml,
-                 attributes: { 'form'  =>  ['action', 'meth'],
-                               'input' =>  ['type', 'value'],
-                               'span'  =>  ['class', 'id'],
-                               'div'   =>  ['class', 'id'],
-                               'a'     =>  ['class', 'id', 'name', 'href'],
-                               :all    =>  ['class', 'id'],
-                             },
-               }
-                   
-        @san_conf = Sanitize::Config::RELAXED.merge(conf){|k,o,n| o.is_a?(Hash) ? o.merge(n) :
-                                                                  o.is_a?(Array) ? o + n :
-                                                                  n }
-
-        #pp @san_conf
-        @san_conf
-     end
+#     def san_conf
+#        return @san_conf if @san_conf
+#        conf = { elements:   ['tt', 'form', 'input', 'span', 'div'],
+#                 output: :xhtml,
+#                 attributes: { 'form'  =>  ['action', 'meth'],
+#                               'input' =>  ['type', 'value'],
+#                               'span'  =>  ['class', 'id'],
+#                               'div'   =>  ['class', 'id'],
+#                               'a'     =>  ['class', 'id', 'name', 'href'],
+#                               :all    =>  ['class', 'id'],
+#                             },
+#               }
+#                   
+#        @san_conf = Sanitize::Config::RELAXED.merge(conf){|k,o,n| o.is_a?(Hash) ? o.merge(n) :
+#                                                                  o.is_a?(Array) ? o + n :
+#                                                                  n }
+#
+#        #pp @san_conf
+#        @san_conf
+#     end
     end
 end

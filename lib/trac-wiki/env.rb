@@ -11,7 +11,7 @@ module TracWiki
     def parse_macro_all(macro_name, str, macro_name_size = nil)
       str_size = str.size
       args, rest, lines, offset = parse_balanced(str)
-      atput('mlen', str_size - rest.size + macro_name_size) if ! macro_name_size.nil?
+      atput('maclen', str_size - rest.size + macro_name_size) if ! macro_name_size.nil?
       if macro_name =~ /\A!/
          # {{!cmd}}
          mac_out = parse_macro_cmd(macro_name, args)

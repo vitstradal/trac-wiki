@@ -478,65 +478,65 @@ module TracWiki
       return offset
     end
 
-    def parse_inline_tag(str, offset)
-      raise "offset is nil" if offset.nil?
-      case
-      when raw_html? && str =~ /\A<(\/)?(\w+)(?:([^>]*?))?(\/\s*)?>/     # single inline <html> tag
-        eot, tag, args, closed = $1, $2, $3, $4
-        do_raw_tag(eot, tag, args, closed, $'.size)
-      when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline {{{ }}} pre (tt)
-        @tree.tag(:tt, $1)
-      when str =~ MACRO_BEG_REX                # macro  {{
-        mac, str, lines, offset = parse_macro($1, $', offset, $&.size)
-        parse_inline(mac.gsub(/\n/,  ' '),0);
-        #print "MACRO.inline(#{$1}), next:#{str}"
-        return str, offset
-      when str =~ /\A`(.*?)`/                  # inline pre (tt)
-        @tree.tag(:tt, $1)
-      when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
-        #@tree.add("\\( #{$1} \\)")
-        @tree.tag(:span, {class:'math'},  $1)
-        @was_math = true
-      when str =~ /\A(\&\w*;)/       # html entity 
-        #print "add html ent: #{$1}\n"
-        @tree.add_raw($1)
-      when str =~ /\A([:alpha:]|[:digit:])+/
-        @tree.add($&)                      # word
-      when str =~ /\A\s+/
-        @tree.add_spc
-      when str =~ /\A'''''/
-        toggle_tag 'strongem', $&       # bolditallic
-      when str =~ /\A\*\*/ || str =~ /\A'''/
-        toggle_tag 'strong', $&         # bold
-      when str =~ /\A''/ || str =~ /\A\/\//
-        toggle_tag 'em', $&             # italic
-      when str =~ /\A\\\\/ || str =~ /\A\[\[br\]\]/i
-        @tree.tag(:br)                  # newline
-      when str =~ /\A__/
-        toggle_tag 'u', $&              # underline
-      when str =~ /\A~~/
-        toggle_tag 'del', $&            # delete
-      when str =~ /\A~/
-        @tree.add_raw('&nbsp;')         # tilde
-#      when /\A\+\+/
-#        toggle_tag 'ins', $&           # insert
-      when str =~ /\A\^/
-        toggle_tag 'sup', $&            # ^{}
-      when str =~ /\A,,/
-        toggle_tag 'sub', $&            # _{}
-      when str =~ /\A!(\{\{|[^\s])/
-        @tree.add($1)                   # !neco !{{
-#      when str =~ /\A[\sA-Z\d]+/i
-#        @tree.add($&)                   # ordinal word
-      when str =~ /\A./
-        @tree.add($&)                   # ordinal char
-#      else
-#        return str[0..-1], offset + 1
-      end
-      #print "one: #{offset}, #{$&.size}, '#{$&}'\n"
-      return $', offset + $&.size
-    end
-
+#    def parse_inline_tag(str, offset)
+#      raise "offset is nil" if offset.nil?
+#      case
+#      when raw_html? && str =~ /\A<(\/)?(\w+)(?:([^>]*?))?(\/\s*)?>/     # single inline <html> tag
+#        eot, tag, args, closed = $1, $2, $3, $4
+#        do_raw_tag(eot, tag, args, closed, $'.size)
+#      when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline {{{ }}} pre (tt)
+#        @tree.tag(:tt, $1)
+#      when str =~ MACRO_BEG_REX                # macro  {{
+#        mac, str, lines, offset = parse_macro($1, $', offset, $&.size)
+#        parse_inline(mac.gsub(/\n/,  ' '),0);
+#        #print "MACRO.inline(#{$1}), next:#{str}"
+#        return str, offset
+#      when str =~ /\A`(.*?)`/                  # inline pre (tt)
+#        @tree.tag(:tt, $1)
+#      when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
+#        #@tree.add("\\( #{$1} \\)")
+#        @tree.tag(:span, {class:'math'},  $1)
+#        @was_math = true
+#      when str =~ /\A(\&\w*;)/       # html entity 
+#        #print "add html ent: #{$1}\n"
+#        @tree.add_raw($1)
+#      when str =~ /\A([:alpha:]|[:digit:])+/
+#        @tree.add($&)                      # word
+#      when str =~ /\A\s+/
+#        @tree.add_spc
+#      when str =~ /\A'''''/
+#        toggle_tag 'strongem', $&       # bolditallic
+#      when str =~ /\A\*\*/ || str =~ /\A'''/
+#        toggle_tag 'strong', $&         # bold
+#      when str =~ /\A''/ || str =~ /\A\/\//
+#        toggle_tag 'em', $&             # italic
+#      when str =~ /\A\\\\/ || str =~ /\A\[\[br\]\]/i
+#        @tree.tag(:br)                  # newline
+#      when str =~ /\A__/
+#        toggle_tag 'u', $&              # underline
+#      when str =~ /\A~~/
+#        toggle_tag 'del', $&            # delete
+#      when str =~ /\A~/
+#        @tree.add_raw('&nbsp;')         # tilde
+##      when /\A\+\+/
+##        toggle_tag 'ins', $&           # insert
+#      when str =~ /\A\^/
+#        toggle_tag 'sup', $&            # ^{}
+#      when str =~ /\A,,/
+#        toggle_tag 'sub', $&            # _{}
+#      when str =~ /\A!(\{\{|[^\s])/
+#        @tree.add($1)                   # !neco !{{
+##      when str =~ /\A[\sA-Z\d]+/i
+##        @tree.add($&)                   # ordinal word
+#      when str =~ /\A./
+#        @tree.add($&)                   # ordinal char
+##      else
+##        return str[0..-1], offset + 1
+#      end
+#      #print "one: #{offset}, #{$&.size}, '#{$&}'\n"
+#      return $', offset + $&.size
+#    end
+#
     #################################################################
     # macro {{ }}
     #  convetntion {{!cmd}} {{template}} {{$var}} {{# comment}} {{!}} (pipe)

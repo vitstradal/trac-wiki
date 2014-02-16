@@ -35,8 +35,8 @@ class Bacon::Context
        "line one\nline two\n"
     when 'nl2'
        "* line one\n* line two\n"
-    when 'mlentest'
-       "mlen:{{$mlen}}"
+    when 'maclentest'
+       "maclen:{{$maclen}}"
     when 'wide'
       "0123456789{{wide}}" * 10
     else
@@ -1032,6 +1032,7 @@ eos
   it 'should parse offset' do
     tc "<p>0</p>\n", "{{$offset}}"
     tc "<p>12345-6</p>\n", "12345-{{$offset}}"
+    tc "<p>žížala-7</p>\n", "žížala-{{$offset}}"
     tc "<p><strong>B</strong>-6</p>\n", "**B**-{{$offset}}"
     tc "<p><a href=\"L\">L</a>-6</p>\n", "[[L]]-{{$offset}}"
     tc "<p><a href=\"L\">4</a></p>\n", "[[L|{{$offset}}]]"
@@ -1044,6 +1045,9 @@ eos
     tc "<p><blockquote>2</blockquote></p>\n", "  {{$offset}}"
     tc "<table><tr><td>ahoj</td>\n<td>11</td>\n</tr>\n</table>\n", "|| ahoj || {{$offset}} ||"
     tc "<table><tr><td>ahoj</td>\n<td>13</td>\n</tr>\n</table>\n", "|| ahoj ||   {{$offset}} ||"
+    tc "<table><tr><td>3</td>\n<td>20</td>\n</tr>\n</table>\n", "|| {{$offset}} ||   {{$offset}} ||"
+    tc "<table><tr><td>3</td>\n<td>20</td>\n</tr>\n<tr><td>3</td>\n<td>20</td>\n</tr>\n</table>\n",
+       "|| {{$offset}} ||   {{$offset}} ||\n|| {{$offset}} ||   {{$offset}} ||"
     tc "<table><tr><td>3</td>\n</tr>\n</table>\n", "|| {{$offset}} ||"
     tc "<table><tr><th>3</th>\n</tr>\n</table>\n", "||={{$offset}}=||"
     tc "<table><tr><th>4</th>\n</tr>\n</table>\n", "||= {{$offset}} =||"
@@ -1063,18 +1067,19 @@ eos
     #tc "<p>ble * line one</p>\n<ul><li>line two 8</li>\n</ul>\n" , "ble {{nl2}} {{$offset}}"
   end
   it 'should parse macro len' do
-    tc "<p>9</p>\n" , "{{$mlen}}"
-    tc "<p>15</p>\n" , "{{$mlen|12345}}"
-    tc "<p>16</p>\n" , "{{$mlen| 12345}}"
-    tc "<p>17</p>\n" , "{{$mlen | 12345}}"
-    tc "<p>16</p>\n" , "{{$mlen |12345}}"
-    tc "<p>16</p>\n" , "{{$mlen |12345}}"
-    tc "<p>13</p>\n" , "{{$mlen|kuk}}"
-    tc "<p>13</p>\n" , "{{$mlen|123}}"
-    tc "<p>33</p>\n" , "{{$mlen|{{$mlen}}{{!echo ahoj}}}}"
-    tc "<p><strong>33</strong></p>\n" , "**{{$mlen|{{$mlen}}{{!echo ahoj}}}}**"
-    tc "<p>26</p>\n" , "{{$mlen|a=e|b=c|d={{$e}}}}"
-    tc "<p>mlen:12</p>\n" , "{{mlentest}}"
+    tc "<p>11</p>\n" , "{{$maclen}}"
+    tc "<p>17</p>\n" , "{{$maclen|12345}}"
+    tc "<p>18</p>\n" , "{{$maclen| 12345}}"
+    tc "<p>19</p>\n" , "{{$maclen | 12345}}"
+    tc "<p>18</p>\n" , "{{$maclen |12345}}"
+    tc "<p>18</p>\n" , "{{$maclen |12345}}"
+    tc "<p>15</p>\n" , "{{$maclen|kuk}}"
+    tc "<p>15</p>\n" , "{{$maclen|123}}"
+    tc "<p>18</p>\n" , "{{$maclen|žížala}}"
+    tc "<p>37</p>\n" , "{{$maclen|{{$maclen}}{{!echo ahoj}}}}"
+    tc "<p><strong>37</strong></p>\n" , "**{{$maclen|{{$maclen}}{{!echo ahoj}}}}**"
+    tc "<p>28</p>\n" , "{{$maclen|a=e|b=c|d={{$e}}}}"
+    tc "<p>maclen:14</p>\n" , "{{maclentest}}"
   end
   it 'should parse lineno' do
     tc "<p>1</p>\n" , "{{$lineno}}"
@@ -1089,6 +1094,9 @@ eos
     tc "<ul><li>line one</li>\n<li>line two 2</li>\n</ul>\n" , "{{nl2}}\n{{$lineno}}"
     tc "<ul><li>line one</li>\n<li>line twoline one line two 3</li>\n</ul>\n" , "\n{{nl2}}{{nl}}\n{{$lineno}}"
     tc "<h2>ahoj</h2><p>2</p>\n<h2>ahoj</h2><p>5</p>\n", "==ahoj==\n{{$lineno}}\n\n==ahoj==\n{{$lineno}}"
+    tc "<table><tr><td>This is <strong>bold</strong></td>\n</tr>\n</table>\n<p>2</p>\n", "||This is **bold**||\n{{$lineno}}"
+    tc "<ul><li>[[ahoj|bhoj]]</li>\n</ul>\n<p>3</p>\n", "* [[ahoj|bhoj]]\n\n{{$lineno}}", :no_link => true
+    tc "<ul><li>[[ahoj|bhoj]] 2</li>\n</ul>\n", "* [[ahoj|bhoj]]\n{{$lineno}}", :no_link => true
   end
 end
 # vim: tw=0
