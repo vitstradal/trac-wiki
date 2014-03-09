@@ -1,4 +1,4 @@
 source 'https://rubygems.org/'
 gemspec
-gem 'iconv'
-gem 'sanitize'
+#gem 'iconv'
+#gem 'sanitize'

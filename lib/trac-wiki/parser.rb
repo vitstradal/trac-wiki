@@ -1,12 +1,12 @@
+# encoding: utf-8
 require 'cgi'
 require 'uri'
-require 'iconv'
 require 'yaml'
 
 # :main: TracWiki
 
 # The TracWiki parses and translates Trac formatted text into
-# XHTML. Creole is a lightweight markup syntax similar to what many
+# XHTML. TracWiki is a lightweight markup syntax similar to what many
 # WikiWikiWebs use. Example syntax:
 #
 # = Heading 1 =
@@ -20,12 +20,7 @@ require 'yaml'
 # [[Image(image.png)]]
 # [[Image(image.png, options)]]
 #
-# The simplest interface is TracWiki.render. The default handling of
-# links allow explicit local links using the [[link]] syntax. External
-# links will only be allowed if specified using http(s) and ftp(s)
-# schemes. If special link handling is needed, such as inter-wiki or
-# hierachical local links, you must inherit Creole::CreoleParser and
-# override make_local_link.
+# for more see http://trac.edgewall.org/wiki/WikiFormatting
 #
 # You can customize the created image markup by overriding
 # make_image.
@@ -48,7 +43,19 @@ module TracWiki
     # Examples: http https ftp ftps
     attr_accessor :allowed_schemes
 
+    # structure where headings are stroed
+    # list of hasheses with `level` and `title`, `sline`
+    # [ { leven: 1, # <h1>
+    #     sline: 3, # line where head starts
+    #     eline: 4, # line before next heading starts
+    #     aname: 'anchor-to-this-heading',
+    #     title: 'heading title'
+    #   },
+    #   ...
+    # ]
     attr_accessor :headings
+
+    # url base for links
     attr_writer :base
 
     # Disable url escaping for local links
@@ -62,14 +69,19 @@ module TracWiki
     attr_writer :no_link
     def no_link?; @no_link; end
 
+    # math syntax extension:
+    # $e^x$ for inline math
+    # $$ e^x $$ for display math
     attr_writer :math
     def math?; @math; end
 
     # allow some <b> <form> <html> 
     # html will be sanitized
-    attr_writer :raw_html
-    def raw_html?; @raw_html; end
+    attr_writer :allow_html
+    def allow_html?; @allow_html; end
 
+    # add '<a class='editheading' href="?edit=N>edit</a>'
+    # to each heading
     attr_writer :edit_heading
     def edit_heading?; @edit_heading; end
 
@@ -82,29 +94,42 @@ module TracWiki
     attr_writer :merge
     def merge?; @merge; end
 
-    # every heading will had id, generated from heading text
+    # every heading had id, generated from heading text
     attr_writer :id_from_heading
     def id_from_heading?; @id_from_heading; end
 
+    # use macros? defalut yes
+    attr_writer :macros
+    def macros?; @macros; end
+
     # when id_from_heading, non ascii char are transliterated to ascii
     attr_writer :id_translit
-    attr_accessor :plugins
-    @plugins = {}
+    def id_translit?; @id_translit; end
+
+    # like template but more powerfull
+    # do no use.
+    attr_accessor :macro_commands
+    @macro_commands = {}
+
+    # template_handler(macroname) -> template_text
+    # when macros enabled and {{myCoolMacro}} ocured,
+    # result fo `template_handler('myCoolMacro') inserted
+    attr_accessor :template_handler
 
     # string begins with macro
     MACRO_BEG_REX =  /\A\{\{ ( \$[\$\.\w]+ | [\#!]\w* |\w+ ) /x
     MACRO_BEG_INSIDE_REX =  /\A(.*?)(?<!\{)\{\{ ( \$[\$\.\w]+ | [\#!]\w* | \w+ ) /xm
     # find end of marcro or begin of inner macro
     MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ ( \$[\$\.\w]+ | [\#!]\w* | \w+)  )/mx
-    def id_translit?; @id_translit; end
 
     # Create a new Parser instance.
     def initialize(text, options = {})
-      init_plugins
+      init_macros
+      @macros = true
       @allowed_schemes = %w(http https ftp ftps)
       @anames = {}
-      plugins = options.delete :plugins
-      @plugins.merge! plugins if ! plugins.nil?
+      macro_commands = options.delete :macro_commands
+      @macro_commands.merge! macro_commands if ! macro_commands.nil?
       @text = text
       @no_escape = nil
       @base = ''
@@ -113,8 +138,8 @@ module TracWiki
       @count_lines_level = 0
     end
 
-    def init_plugins
-      @plugins = {
+    def init_macros
+      @macro_commands = {
         '!ifeq'  => proc { |env| env.expand_arg(0) == env.expand_arg(1) ? env.expand_arg(2) : env.expand_arg(3) },
         '!ifdef' => proc { |env| env.at(env.expand_arg(0), nil, false).nil? ? env.expand_arg(2) : env.expand_arg(1) },
         '!set'   => proc { |env| env[env.expand_arg(0)] = env.expand_arg(1); '' },
@@ -153,21 +178,10 @@ module TracWiki
 
     end
 
-    # th(macroname) -> template_text
-    attr_accessor :template_handler
 
     @was_math = false
     def was_math?; @was_math; end
 
-    # Convert CCreole text to HTML and return
-    # the result. The resulting HTML does not contain <html> and
-    # <body> tags.
-    #
-    # Example:
-    #
-    # parser = Parser.new("**Hello //World//**")
-    # parser.to_html
-    # #=> "<p><strong>Hello <em>World</em></strong></p>"
     def add_line_no(count)
       @line_no += count if @count_lines_level == 0
     end
@@ -190,8 +204,8 @@ module TracWiki
       @tree.to_html
     end
 
-    def add_plugin(name, &block)
-        @plugins[name] = block
+    def add_macro_command(name, &block)
+        @macro_commands[name] = block
     end
 
 
@@ -299,44 +313,13 @@ module TracWiki
       "#{@base}#{escape_url(link)}##{escape_url(anch)}"
     end
 
-    # Sanatize a direct url (e.g. http://wikipedia.org/). The default
-    # behaviour returns the original link as-is.
-    #
-    # Must ensure that the result is properly URL-escaped. The caller
-    # will handle HTML escaping as necessary. Links will not be
-    # converted to HTML links if the function returns link.
-    #
-    # Custom versions of this function in inherited classes can
-    # implement specific link handling behaviour, such as redirection
-    # to intermediate pages (for example, for notifing the user that
-    # he is leaving the site).
-    def make_direct_link(url) #:doc:
-      url
-    end
-
-    # Sanatize and prefix image URLs. When images are encountered in
-    # Creole text, this function is called to obtain the actual URL of
-    # the image. The default behaviour is to return the image link
-    # as-is. No image tags are inserted if the function returns nil.
-    #
-    # Custom version of the method can be used to sanatize URLs
-    # (e.g. remove query-parts), inhibit off-site images, or add a
-    # base URL, for example:
-    #
-    # def make_image_link(url)
-    # URI.join("http://mywiki.org/images/", url)
-    # end
-    def make_image_link(url) #:doc:
-      url
-    end
-
     # Create image markup. This
     # method can be overridden to generate custom
     # markup, for example to add html additional attributes or
     # to put divs around the imgs.
     def make_image(uri, attrs='')
       #"<img src=\"#{make_explicit_link(uri)}\"#{make_image_attrs(attrs)}/>"
-      @tree.tag(:img, make_image_attrs(uri, attrs))
+      @tree.tag(:img, make_image_attrs(@base + uri, attrs))
     end
 
     def make_image_attrs(uri, attrs)
@@ -424,12 +407,12 @@ module TracWiki
           link, content, content_offset, whole= $2, $5, $1.size + ($4||'').size, $&
           #print "link: #{content_offset} of:#{offset}, '#{$1}', '#{$4||''}'\n"
           make_link(link, content, whole, offset + content_offset)
-        when raw_html? && str =~ /\A<(\/)?(\w+)(?:([^>]*?))?(\/\s*)?>/     # single inline <html> tag
+        when allow_html? && str =~ /\A<(\/)?(\w+)(?:([^>]*?))?(\/\s*)?>/     # single inline <html> tag
           eot, tag, args, closed = $1, $2, $3, $4
           do_raw_tag(eot, tag, args, closed, $'.size)
         when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline {{{ }}} pre (tt)
           @tree.tag(:tt, $1)
-        when str =~ MACRO_BEG_REX                # macro  {{
+        when macros? && str =~ MACRO_BEG_REX                # macro  {{
           mac, str, lines, offset = parse_macro($1, $', offset, $&.size)
           parse_inline(mac.gsub(/\n/,  ' '),0);
           #print "MACRO.inline(#{$1}), next:#{str}"
@@ -478,65 +461,6 @@ module TracWiki
       return offset
     end
 
-#    def parse_inline_tag(str, offset)
-#      raise "offset is nil" if offset.nil?
-#      case
-#      when raw_html? && str =~ /\A<(\/)?(\w+)(?:([^>]*?))?(\/\s*)?>/     # single inline <html> tag
-#        eot, tag, args, closed = $1, $2, $3, $4
-#        do_raw_tag(eot, tag, args, closed, $'.size)
-#      when str =~ /\A\{\{\{(.*?\}*)\}\}\}/     # inline {{{ }}} pre (tt)
-#        @tree.tag(:tt, $1)
-#      when str =~ MACRO_BEG_REX                # macro  {{
-#        mac, str, lines, offset = parse_macro($1, $', offset, $&.size)
-#        parse_inline(mac.gsub(/\n/,  ' '),0);
-#        #print "MACRO.inline(#{$1}), next:#{str}"
-#        return str, offset
-#      when str =~ /\A`(.*?)`/                  # inline pre (tt)
-#        @tree.tag(:tt, $1)
-#      when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
-#        #@tree.add("\\( #{$1} \\)")
-#        @tree.tag(:span, {class:'math'},  $1)
-#        @was_math = true
-#      when str =~ /\A(\&\w*;)/       # html entity 
-#        #print "add html ent: #{$1}\n"
-#        @tree.add_raw($1)
-#      when str =~ /\A([:alpha:]|[:digit:])+/
-#        @tree.add($&)                      # word
-#      when str =~ /\A\s+/
-#        @tree.add_spc
-#      when str =~ /\A'''''/
-#        toggle_tag 'strongem', $&       # bolditallic
-#      when str =~ /\A\*\*/ || str =~ /\A'''/
-#        toggle_tag 'strong', $&         # bold
-#      when str =~ /\A''/ || str =~ /\A\/\//
-#        toggle_tag 'em', $&             # italic
-#      when str =~ /\A\\\\/ || str =~ /\A\[\[br\]\]/i
-#        @tree.tag(:br)                  # newline
-#      when str =~ /\A__/
-#        toggle_tag 'u', $&              # underline
-#      when str =~ /\A~~/
-#        toggle_tag 'del', $&            # delete
-#      when str =~ /\A~/
-#        @tree.add_raw('&nbsp;')         # tilde
-##      when /\A\+\+/
-##        toggle_tag 'ins', $&           # insert
-#      when str =~ /\A\^/
-#        toggle_tag 'sup', $&            # ^{}
-#      when str =~ /\A,,/
-#        toggle_tag 'sub', $&            # _{}
-#      when str =~ /\A!(\{\{|[^\s])/
-#        @tree.add($1)                   # !neco !{{
-##      when str =~ /\A[\sA-Z\d]+/i
-##        @tree.add($&)                   # ordinal word
-#      when str =~ /\A./
-#        @tree.add($&)                   # ordinal char
-##      else
-##        return str[0..-1], offset + 1
-#      end
-#      #print "one: #{offset}, #{$&.size}, '#{$&}'\n"
-#      return $', offset + $&.size
-#    end
-#
     #################################################################
     # macro {{ }}
     #  convetntion {{!cmd}} {{template}} {{$var}} {{# comment}} {{!}} (pipe)
@@ -803,7 +727,7 @@ module TracWiki
       until str.empty?
         case
         # macro
-        when str =~ MACRO_BEG_REX
+        when macros? && str =~ MACRO_BEG_REX
           mac, str, lines, offset = parse_macro($1, $', 0, $&.size)
           raise 'lines is nil' if lines.nil?
           raise 'offset is nil' if offset.nil?
@@ -864,14 +788,11 @@ module TracWiki
       end_paragraph if want_end_paragraph
       @headings.last[:eline] = @line_no - 1
     end
-
     def aname_nice(aname, title)
 
       if aname.nil? && id_from_heading?
         aname = title.gsub /\s+/, '_'
-        if id_translit?
-          aname = Iconv.iconv('ascii//translit', 'utf-8', aname).join
-        end
+        aname = _translit(aname) if id_translit?
       end
       return nil if aname.nil?
       aname_ori = aname
@@ -882,6 +803,14 @@ module TracWiki
       end
       @anames[aname] = true
       aname
+    end
+    def _translit(text)
+       # iconv is obsolete, but translit funcionality was not replaced
+       # see http://stackoverflow.com/questions/20224915/iconv-will-be-deprecated-in-the-future-transliterate
+       # return Iconv.iconv('ascii//translit', 'utf-8', text).join
+
+       # http://unicode-utils.rubyforge.org/UnicodeUtils.html#method-c-compatibility_decomposition
+       return UnicodeUtils.compatibility_decomposition(text).chars.grep(/\p{^Mn}/).join('')
     end
   end
 end

@@ -5,7 +5,7 @@ require 'pp'
 
 class Bacon::Context
   def tc(html, wiki, options = {})
-    options[:plugins] = { '!print' => proc { |env| env.arg(0) + '! ' }, 
+    options[:macro_commands] = { '!print' => proc { |env| env.arg(0) + '! ' }, 
                         }
     options[:template_handler] = self.method(:template_handler)
 
@@ -978,8 +978,8 @@ eos
     tc "<p>,2</p>\n", "{{!yset ahoj|data: [1,2]\ndesc: malo}},{{$ahoj.data.1}}"
     tc "<p>AHOJ,dve</p>\n", "{{ytest2 \nahoj: AHOJ\nbhoj: [ jedna, dve ]\n}}"
     tc "<p>,,BHOJ</p>\n", "{{!set ahoj|AHOJ}},{{!set AHOJ|BHOJ}},{{$$ahoj}}"
-    tc "<p>(0),(1),(2),</p>\n", "{{!for i|3|({{$i}}),}}", raw_html: true
-    tc "<p>(0),(1),(2),(3),</p>\n", "{{!for i|4|({{$i}}),}}", raw_html: true
+    tc "<p>(0),(1),(2),</p>\n", "{{!for i|3|({{$i}}),}}", allow_html: true
+    tc "<p>(0),(1),(2),(3),</p>\n", "{{!for i|4|({{$i}}),}}", allow_html: true
     tc "<p>,(ALFA),(BETA),</p>\n", "{{!yset data|[ALFA,BETA]}},{{!for i|data|({{$data.$i}}),}}"
     tc "<p>,(1),(2),</p>\n", "{{!yset data|[1,2]}},{{!for i|data|({{$data.$i}}),}}"
     tc "<p>,(alfa:ALFA),(beta:BETA),</p>\n", "{{!yset data|beta: BETA\nalfa: ALFA\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
@@ -993,24 +993,24 @@ eos
   end
 
   it 'should parse html' do
-    tc "<p>alert(666)</p>\n", "<script>alert(666)</script>", raw_html: true
-    tc "<p><b>T</b>E</p>\n", "<p><b>T</b>E</p>", raw_html: true
-    tc "<p><span>Span</span></p>\n", "<span>Span</span>\n", raw_html: true
-    tc "<p><strong><span>Span</span></strong></p>\n", "**<span>Span</span>**\n", raw_html: true
-    tc "<div class=\"ahoj\">Div</div>\n", "<div class=\"ahoj\">Div</div>\n", raw_html: true
-    tc "<p><strong>ahoj</strong></p>\n<div class=\"ahoj\">Div</div>\n", "**ahoj<div class=\"ahoj\">Div</div>\n", raw_html: true
-    tc "<p><span>Span</span><span>Span</span></p>\n", "<span>Span</span><span>Span</span>\n", raw_html: true
-    tc "<p><em><b>boldoitali</b></em>cE</p>\n", "<p>''<b>boldoitali''c</b>E</p>", raw_html: true
-    tc "<p><b>blabla</b></p>\n<p>endE</p>\n", "<p><b>bla</html>bla</p>end</b>E</p>", raw_html: true
-    tc "<p>baf</p>\n", "\n\n\nbaf\n\n\n", raw_html: true
-    tc "<div class=\"ahoj\">Div</div>\n<p>baf</p>\n", "<div class=\"ahoj\">Div</div>\nbaf\n", raw_html: true
+    tc "<p>alert(666)</p>\n", "<script>alert(666)</script>", allow_html: true
+    tc "<p><b>T</b>E</p>\n", "<p><b>T</b>E</p>", allow_html: true
+    tc "<p><span>Span</span></p>\n", "<span>Span</span>\n", allow_html: true
+    tc "<p><strong><span>Span</span></strong></p>\n", "**<span>Span</span>**\n", allow_html: true
+    tc "<div class=\"ahoj\">Div</div>\n", "<div class=\"ahoj\">Div</div>\n", allow_html: true
+    tc "<p><strong>ahoj</strong></p>\n<div class=\"ahoj\">Div</div>\n", "**ahoj<div class=\"ahoj\">Div</div>\n", allow_html: true
+    tc "<p><span>Span</span><span>Span</span></p>\n", "<span>Span</span><span>Span</span>\n", allow_html: true
+    tc "<p><em><b>boldoitali</b></em>cE</p>\n", "<p>''<b>boldoitali''c</b>E</p>", allow_html: true
+    tc "<p><b>blabla</b></p>\n<p>endE</p>\n", "<p><b>bla</html>bla</p>end</b>E</p>", allow_html: true
+    tc "<p>baf</p>\n", "\n\n\nbaf\n\n\n", allow_html: true
+    tc "<div class=\"ahoj\">Div</div>\n<p>baf</p>\n", "<div class=\"ahoj\">Div</div>\nbaf\n", allow_html: true
 
-    tc "<p><b>BOLD</b></p>\n", "<b>BOLD</b>\n", raw_html: true
-    tc "<p><br/></p>\n", "<br/>\n", raw_html: true
-    tc "<p><br/></p>\n", "<br></br>\n", raw_html: true
-    tc "<p><b class=\"bclass\">BOLD</b></p>\n", "<b class=\"bclass\">BOLD</b>\n", raw_html: true
-    tc "<p><b class=\"bclass\">BOLD</b></p>\n", "<b bad=\"bad\" class=\"bclass\">BOLD</b>\n", raw_html: true
-    tc "<p><b class=\"bclass\">BOLD</b></p>\n", "<b bad=\"bad\" class=\"bclass\">BOLD</b>\n", raw_html: true
+    tc "<p><b>BOLD</b></p>\n", "<b>BOLD</b>\n", allow_html: true
+    tc "<p><br/></p>\n", "<br/>\n", allow_html: true
+    tc "<p><br/></p>\n", "<br></br>\n", allow_html: true
+    tc "<p><b class=\"bclass\">BOLD</b></p>\n", "<b class=\"bclass\">BOLD</b>\n", allow_html: true
+    tc "<p><b class=\"bclass\">BOLD</b></p>\n", "<b bad=\"bad\" class=\"bclass\">BOLD</b>\n", allow_html: true
+    tc "<p><b class=\"bclass\">BOLD</b></p>\n", "<b bad=\"bad\" class=\"bclass\">BOLD</b>\n", allow_html: true
   end
   it 'should parse link' do
     tc "<p><a href=\"#here\">Here</a></p>\n", "[[#here|Here]]"

@@ -7,7 +7,7 @@ module TracWiki
   # Convert the argument in Trac format to HTML and return the
   # result. Example:
   #
-  # TracWiki.creolize("**Hello ''World''**")
+  # TracWiki.render("**Hello ''World''**")
   # #=> "<p><strong>Hello <em>World</em></strong></p>"
   #
   # This is an alias for calling Creole#parse:

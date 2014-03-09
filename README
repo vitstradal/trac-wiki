@@ -8,16 +8,86 @@ Project page on github:
 
 == INSTALLATION ==
 
-{{{
-gem install trac-wiki
-}}}
+    gem install trac-wiki
 
 == SYNOPSIS ==
 
-{{{
-require 'trac-wiki'
-html = TracWiki.render('== TracWik text ==')
-}}}
+    require 'trac-wiki'
+    html = TracWiki.render('== TracWiki text ==')
+    # or
+    html = TracWiki.render('== TracWiki text ==', options)
+
+== Options ==
+
+* `allowed_schemes`
+   Allowed url schemes
+   Examples: http https ftp ftps
+
+* `base`
+   base URL (or URI), for link and images
+
+* `no_escape`
+    Disable url escaping for local links
+    Escaping: [[/Test]] --> %2FTest
+    No escaping: [[/Test]] --> Test
+
+
+* `no_link`
+    Disable url escaping for local links
+    `[[whatwerver]]` stays `[[whatwerver]]`
+
+* `math`
+    math syntax extension:
+    $e^x$ for inline math,
+    $$ e^x $$ for display math
+
+* `allow_html`
+    allow some <b> <form> <html>
+    html will be sanitized
+
+* `edit_heading`
+    add '<a class='editheading' href="?edit=N>edit</a>'
+    to each heading
+
+* `merge`
+    understand merge tags  (see diff3(1))
+    >>>>>>> mine
+    ||||||| orig
+    =======
+    <<<<<<< yours
+    convert to <div class="merge merge-mine">mine</div>
+
+* `id_from_heading`
+    every heading had id, generated from heading text
+
+* `id_translit`
+    when `id_from_heading`, non ascii char are transliterated to ascii (Těžiště -> Teziste)
+
+* `template_handler`
+    template_handler(macroname) -> template_text
+    when macros enabled and {{myCoolMacro}} ocured,
+    result fo `template_handler('myCoolMacro') inserted
+
+* `macros`
+   enable macros|templates (in mediawiki style). macros are in shape `{{macro_name | arg1 | arg2 }}`
+
+* `macro_commands`
+    like template but more powerfull
+    do no use.
+
+== Other parser attributes ==
+
+* `parser.headings`
+    structure where headings are stored
+    list of hasheses with `level` and `title`, `sline`
+    [ { leven: 1, # <h1>
+        sline: 3, # line where head starts
+        eline: 4, # line before next heading starts
+        aname: 'anchor-to-this-heading',
+        title: 'heading title'
+      },
+      ...
+    ]
 
 == BUGS ==
 

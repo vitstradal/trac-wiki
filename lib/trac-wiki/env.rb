@@ -103,11 +103,11 @@ module TracWiki
     # r: result of  {{!cmd}}
     def do_macro_cmd(macro_name, args)
       return '|' if macro_name == '!'
-      if @parser.plugins.key?(macro_name)
+      if @parser.macro_commands.key?(macro_name)
         @env[:cmd_args] =  args
         @env[:cmd_arg0] =  macro_name
         #print "mac: #{macro_name} env:" ; pp (@env)
-        ret = @parser.plugins[macro_name].call(self)
+        ret = @parser.macro_commands[macro_name].call(self)
         return ret
       end
       "UCMD(#{macro_name}|#{@env['arg']})"

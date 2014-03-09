@@ -1,5 +1,4 @@
 require 'pp'
-require 'sanitize'
 module TracWiki
 
     class RawHtml
