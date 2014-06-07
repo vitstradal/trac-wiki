@@ -2,6 +2,7 @@
 require 'cgi'
 require 'uri'
 require 'yaml'
+require 'unicode_utils/compatibility_decomposition'
 
 # :main: TracWiki
 
@@ -116,26 +117,66 @@ module TracWiki
     # result fo `template_handler('myCoolMacro') inserted
     attr_accessor :template_handler
 
+
+    # macro {{$var}} | {{#comment}} | {{!cmd}} |  {{template}} | {{/template}}
     # string begins with macro
-    MACRO_BEG_REX =  /\A\{\{ ( \$[\$\.\w]+ | [\#!]\w* |\w+ ) /x
-    MACRO_BEG_INSIDE_REX =  /\A(.*?)(?<!\{)\{\{ ( \$[\$\.\w]+ | [\#!]\w* | \w+ ) /xm
+    MACRO_BEG_REX =  /\A\{\{ ( \$[\$\.\w]+ | [\#!\/]\w* |\w+ ) /x
+    MACRO_BEG_INSIDE_REX =  /\A(.*?)(?<!\{)\{\{ ( \$[\$\.\w]+ | [\#!\/]\w* | \w+ ) /xm
     # find end of marcro or begin of inner macro
-    MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ ( \$[\$\.\w]+ | [\#!]\w* | \w+)  )/mx
+    MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ ( \$[\$\.\w]+ | [\#!\/]\w* | \w+)  )/mx
 
     # Create a new Parser instance.
-    def initialize(text, options = {})
+    def initialize(options = nil)
       init_macros
       @macros = true
       @allowed_schemes = %w(http https ftp ftps)
-      @anames = {}
       macro_commands = options.delete :macro_commands
       @macro_commands.merge! macro_commands if ! macro_commands.nil?
-      @text = text
       @no_escape = nil
       @base = ''
       options.each_pair {|k,v| send("#{k}=", v) }
       @base += '/' if !@base.empty? && @base[-1] != '/'
+    end
+
+    def text(text)
+      @text = text
+      return self
+    end
+
+    def was_math?; @was_math; end
+
+    def to_html(text = nil)
+      text(text) if ! text.nil?
+      @was_math = false
+      @anames = {}
       @count_lines_level = 0
+      @text = text if !text.nil?
+      @tree = TracWiki::Tree.new
+      @edit_heading_class = 'editheading'
+      @headings = [ {level: 0, sline: 1 } ]
+      @p = false
+      @stack = []
+      @stacki = []
+      @was_math = false
+      @line_no = 1
+      parse_block(@text)
+      @tree.to_html
+    end
+
+    def make_toc_html
+      @tree = TracWiki::Tree.new
+      parse_block(make_toc)
+      @tree.to_html
+    end
+
+    def add_macro_command(name, &block)
+        @macro_commands[name] = block
+    end
+
+    protected
+
+    def add_line_no(count)
+      @line_no += count if @count_lines_level == 0
     end
 
     def init_macros
@@ -144,8 +185,6 @@ module TracWiki
         '!ifdef' => proc { |env| env.at(env.expand_arg(0), nil, false).nil? ? env.expand_arg(2) : env.expand_arg(1) },
         '!set'   => proc { |env| env[env.expand_arg(0)] = env.expand_arg(1); '' },
         '!yset'  => proc { |env| env[env.expand_arg(0)] = YAML.load(env.arg(1)); '' },
-
-#        '!html'  => proc { |env| "\n{{{!\n#{env.arg(0)}\n}}}\n" },
         '!sub'   => proc { |env| pat = env.expand_arg(1)
                                  pat = Regexp.new(pat[1..-2]) if pat =~ /\A\/.*\/\Z/
                                  env.expand_arg(0).gsub(pat, env.expand_arg(2))
@@ -178,44 +217,9 @@ module TracWiki
 
     end
 
-
-    @was_math = false
-    def was_math?; @was_math; end
-
-    def add_line_no(count)
-      @line_no += count if @count_lines_level == 0
-    end
-    def to_html
-      @tree = TracWiki::Tree.new
-      @edit_heading_class = 'editheading'
-      @headings = [ {level: 0, sline: 1 } ]
-      @p = false
-      @stack = []
-      @stacki = []
-      @was_math = false
-      @line_no = 1
-      parse_block(@text)
-      @tree.to_html
-    end
-
-    def make_toc_html
-      @tree = TracWiki::Tree.new
-      parse_block(make_toc)
-      @tree.to_html
-    end
-
-    def add_macro_command(name, &block)
-        @macro_commands[name] = block
-    end
-
-
-
-    protected
-
     # Escape any characters with special meaning in HTML using HTML
     # entities. (&<>" not ')
     def escape_html(string)
-      #CGI::escapeHTML(string)
       Parser.escapeHTML(string)
     end
 
@@ -318,7 +322,6 @@ module TracWiki
     # markup, for example to add html additional attributes or
     # to put divs around the imgs.
     def make_image(uri, attrs='')
-      #"<img src=\"#{make_explicit_link(uri)}\"#{make_image_attrs(attrs)}/>"
       @tree.tag(:img, make_image_attrs(@base + uri, attrs))
     end
 

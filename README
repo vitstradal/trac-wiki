@@ -17,6 +17,13 @@ Project page on github:
     # or
     html = TracWiki.render('== TracWiki text ==', options)
 
+
+    parser = TracWiki.parser(options)
+
+    parser.to_html(text1)
+    parser.to_html(text2)
+
+
 == Options ==
 
 * `allowed_schemes`
@@ -69,16 +76,17 @@ Project page on github:
     result fo `template_handler('myCoolMacro') inserted
 
 * `macros`
-   enable macros|templates (in mediawiki style). macros are in shape `{{macro_name | arg1 | arg2 }}`
+   enable macros|templates (in mediawiki style).
+   macros are in form `{{macro_name | arg1 | arg2 }}`
 
 * `macro_commands`
     like template but more powerfull
     do no use.
 
-== Other parser attributes ==
+== Other parser attributes and functions ==
 
 * `parser.headings`
-    structure where headings are stored
+    structure where headings are stored (after parse)
     list of hasheses with `level` and `title`, `sline`
     [ { leven: 1, # <h1>
         sline: 3, # line where head starts
@@ -89,6 +97,13 @@ Project page on github:
       ...
     ]
 
+* `parser.was_math?`
+  if math (inline or dispayed) was parsed.
+
+* `parser.make_toc_html`
+  create html toc from previously parsed text
+
+* `parser.add_macro_command(name, &block)`
 == BUGS ==
 
 If you found a bug, please report it at the TracWiki project's tracker
@@ -99,10 +114,6 @@ http://github.com/vitstradal/trac-wiki/issues
 == AUTHORS ==
 
 * Vitas Stradal
-Based on Creole:
-
-* Lars Christensen (larsch)
-* Daniel Mendler (minad)
 
 == LICENSE ==
 

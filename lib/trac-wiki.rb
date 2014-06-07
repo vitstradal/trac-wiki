@@ -13,9 +13,9 @@ module TracWiki
   # This is an alias for calling Creole#parse:
   # TracWiki.new(text).to_html
   def self.render(text, options = {})
-    Parser.new(text, options).to_html
+    Parser.new(options).to_html(text)
   end
-  def self.parser(text, options = {})
-    Parser.new(text, options)
+  def self.parser(options = {})
+    Parser.new(options)
   end
 end

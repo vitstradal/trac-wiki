@@ -9,8 +9,8 @@ class Bacon::Context
                         }
     options[:template_handler] = self.method(:template_handler)
 
-    parser = TracWiki.parser(wiki, options)
-    parser.to_html.should.equal html
+    parser = TracWiki.parser(options)
+    parser.to_html(wiki).should.equal html
   end
 
   def template_handler(tname, env)
@@ -39,14 +39,18 @@ class Bacon::Context
        "maclen:{{$maclen}}"
     when 'wide'
       "0123456789{{wide}}" * 10
+    when 'testoff'
+      "off:{{$offset}}"
+    when '/slash'
+      "slash/slash"
     else
       nil
       #"UNK_TEMPL(#{tname})"
     end
   end
   def  h(hash, wiki, opts = {})
-    parser = TracWiki.parser(wiki, opts)
-    parser.to_html
+    parser = TracWiki.parser(opts)
+    parser.to_html(wiki)
     #pp parser.headers
     parser.headings.should == hash
   end
@@ -1057,7 +1061,11 @@ eos
     tc "<p><blockquote>2<blockquote>6</blockquote></blockquote></p>\n", "> {{$offset}}\n> >   {{$offset}}"
     tc "<p>test:5,17</p>\n", "test:{{$offset}},{{$offset}}"
     tc "<p>test:5,17,<strong>31</strong></p>\n", "test:{{$offset}},{{$offset}},**{{$offset}}**"
+    tc "<p>off:0</p>\n", "{{testoff}}"
+    tc "<p>A:off:2</p>\n", "A:{{testoff}}"
+    tc "<p>A:off:2</p>\n", "A:{{#echo {{testoff}}}}"
   end
+
   it 'should parse offset and template' do
     tc "<p>ahoj ahoj,19</p>\n" , "ahoj {{$mac|ahoj}},{{$offset}}"
     tc "<p>ahoj line one line two ,12</p>\n" , "ahoj {{nl}},{{$offset}}"
@@ -1080,6 +1088,9 @@ eos
     tc "<p><strong>37</strong></p>\n" , "**{{$maclen|{{$maclen}}{{!echo ahoj}}}}**"
     tc "<p>28</p>\n" , "{{$maclen|a=e|b=c|d={{$e}}}}"
     tc "<p>maclen:14</p>\n" , "{{maclentest}}"
+  end
+  it 'should parse macro slash' do
+    tc "<p>slash/slash</p>\n" , "{{/slash}}"
   end
   it 'should parse lineno' do
     tc "<p>1</p>\n" , "{{$lineno}}"
