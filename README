@@ -104,6 +104,22 @@ Project page on github:
   create html toc from previously parsed text
 
 * `parser.add_macro_command(name, &block)`
+
+* `parser.env.(env|at(key))`
+   access to env values after parse
+
+== Macros ==
+
+* `{{template}}`
+* `{{$variable}}`
+   * can be set by  {{!set variable|value}}
+   * `$1`, `$2` parameters send to template {{template ONE|TWO}}
+   * parameters send to template can be named {{template ahoj=test|hi=west}}
+   * `$0` all parameters (without named)
+   * `$00` all parameters (with named)
+
+* `{{!command}}`
+
 == BUGS ==
 
 If you found a bug, please report it at the TracWiki project's tracker

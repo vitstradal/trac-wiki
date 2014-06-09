@@ -12,6 +12,23 @@ class Bacon::Context
     parser = TracWiki.parser(options)
     parser.to_html(wiki).should.equal html
   end
+  def env(wiki, var, val,options = {})
+    options[:macro_commands] = { '!print' => proc { |env| env.arg(0) + '! ' }, }
+    options[:template_handler] = self.method(:template_handler)
+    parser = TracWiki.parser(options)
+    parser.to_html(wiki)
+    parser.env.at(var).should.equal val
+  end
+  def used_templates(wiki, used_templates, options={})
+    options[:macro_commands] = { '!print' => proc { |env| env.arg(0) + '! ' }, }
+    options[:template_handler] = self.method(:template_handler)
+    parser = TracWiki.parser(options)
+    parser.to_html(wiki)
+    parser.used_templates.sort.map do |key,value|
+      "#{key}:#{value}"
+    end.join(',').should.equal used_templates
+
+  end
 
   def template_handler(tname, env)
     case tname
@@ -23,8 +40,14 @@ class Bacon::Context
       "{{$y.ahoj}},{{$y.bhoj.1}}"
     when 'ytest2'
       "{{!set i|ahoj}}{{$y.$i}},{{$y.bhoj.1}}"
+    when 'varnula'
+      "nula:{{$0}},a:{{$a}}"
+    when 'varnulanula'
+      "nulanula:{{$00}},a:{{$a}}"
     when 'vartest'
-      "jedna:{{$1}},dve:{{$2}},p:{{$p}},arg:{{$arg}}"
+      "jedna:{{$1}},dve:{{$2}},p:{{$p}},arg:{{$00}}"
+    when 'testundef'
+      "{{westundef}}"
     when 'test'
       "{{west}}"
     when 'west'
@@ -1022,6 +1045,7 @@ eos
     tc "<p><a href=\"there#i+m\">There</a></p>\n", "[[there#i m|There]]"
     tc "<p><a href=\"http://example.com/there#i+m\">There</a></p>\n", "[[there#i m|There]]", base: 'http://example.com/'
     tc "<p><a href=\"#here+i+m\">Here</a></p>\n", "[[#here i m|Here]]", base: 'http://example.com/'
+    tc "<p><a href=\"#here+i+m\">He<strong>r</strong>e</a></p>\n", "[[#here i m|He**r**e]]"
   end
   it 'should parse dnl inside macro' do
     tc "<p>d<blockquote>e</blockquote></p>\n", "{{!ifeq a|b|c|d\n e}}"
@@ -1108,6 +1132,27 @@ eos
     tc "<table><tr><td>This is <strong>bold</strong></td>\n</tr>\n</table>\n<p>2</p>\n", "||This is **bold**||\n{{$lineno}}"
     tc "<ul><li>[[ahoj|bhoj]]</li>\n</ul>\n<p>3</p>\n", "* [[ahoj|bhoj]]\n\n{{$lineno}}", :no_link => true
     tc "<ul><li>[[ahoj|bhoj]] 2</li>\n</ul>\n", "* [[ahoj|bhoj]]\n{{$lineno}}", :no_link => true
+  end
+  it 'should parse nula' do
+    tc "<p>nula:TEXT,a:</p>\n" , "{{varnula TEXT}}"
+    tc "<p>nula:TEXT,a:AHOJ</p>\n" , "{{varnula a=AHOJ|TEXT}}"
+    tc "<p>nula:TEXT,a:AHOJ</p>\n" , "{{varnula TEXT|a=AHOJ}}"
+    tc "<p>nula:TEXT,a:</p>\n" , "{{varnula TEXT|b=AHOJ}}"
+    tc "<p>nula:TE|XT,a:AHOJ</p>\n" , "{{varnula TE|XT|a=AHOJ}}"
+    tc "<p>nula:TE|XT,a:AHOJ</p>\n" , "{{varnula TE|a=AHOJ|XT}}"
+    tc "<p>nula:TE|XT,a:AHOJ</p>\n" , "{{varnula  TE|a=AHOJ|XT}}"
+    tc "<p>nulanula:TE|a=AHOJ|XT,a:AHOJ</p>\n" , "{{varnulanula TE|a=AHOJ|XT}}"
+  end
+  it 'should parse env' do
+    env '{{!set b|ahoj}}', 'b', 'ahoj'
+    env '{{!set *|ahoj}}', '*', 'ahoj'
+    env '{{!set *|{}|}}', '*', '{}'
+    tc "<p>a</p>\n" , "{{!set qq|a}}{{$qq}}"
+  end
+  it 'should know used templates' do
+    used_templates "{{varnula}}", "varnula:true"
+    used_templates "{{test}}", "test:true,west:true"
+    used_templates "{{testundef}}", "testundef:true,westundef:false"
   end
 end
 # vim: tw=0

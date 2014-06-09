@@ -145,7 +145,7 @@ module TracWiki
                      :h1, :h2, :h3, :h4, :h5, :h6,
                      :div, :span, :p, :pre,
                      :li, :ul, :ol, :dl, :dt, :dd,
-                     :b, :tt, :u, :del, :blockquote, :strong, :em, :sup, :sub,
+                     :b, :tt, :u, :del, :blockquote, :strong, :em, :sup, :sub, :i,
                      :table,  :tr, :td, :th,
                      :br , :img, :hr,
                      :form, :textarea, :input, :select, :option,

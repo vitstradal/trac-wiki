@@ -1,3 +1,3 @@
 module TracWiki
-  VERSION = '0.3.11'
+  VERSION = '0.3.14'
 end

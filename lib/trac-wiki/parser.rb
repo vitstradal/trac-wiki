@@ -56,6 +56,14 @@ module TracWiki
     # ]
     attr_accessor :headings
 
+    def env
+      @env
+    end
+
+    attr_reader :used_templates
+    @used_templates = {}
+
+
     # url base for links
     attr_writer :base
 
@@ -147,6 +155,7 @@ module TracWiki
 
     def to_html(text = nil)
       text(text) if ! text.nil?
+      @used_templates = {}
       @was_math = false
       @anames = {}
       @count_lines_level = 0

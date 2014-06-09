@@ -2,6 +2,7 @@
 module TracWiki
 
   class Env
+    attr_accessor :env
     def initialize(parser, env = {})
       @parser = parser
       @env = env
@@ -32,34 +33,6 @@ module TracWiki
       return do_macro_var($1, args) if macro_name =~ /^\$(.*)/
       return do_macro_templ(macro_name, args)
     end
-
-#    # parse to next }} (with balanced {{..}})
-#    # output will be parsed tree:  [ "string", [ "string", ... ], "string", [..],[..] ]
-#    def parse_macro_tree(macro_name, str)
-#      return do_macro_cmd(macro_name, []), $', 0 if str =~ /\A}}/
-#      #print "_parse_macro_cmd: #{macro_name}, str#{str}\n"
-#      lines = 0
-#      tree = []
-#      cur = tree
-#      stack = []
-#      while str =~ /{{|}}/
-#        prefix, match, str  = $`, $&, $'
-#        cur.push(prefix) if prefix.size > 0
-#        lines += prefix.count("\n")
-#        if match == '{{'
-#          stack.push(cur)
-#          cur.push([])
-#          cur = cur[-1]
-#        elsif match == '}}'
-#          return tree, str, lines if cur == tree
-#          cur = stack.pop
-#        else
-#          raise "never happen"
-#        end
-#      end
-#      raise "eol in parsing macro params"
-#    end
-
 
     # parse to next }} (with balanced {{..}})
     # like parse_macro_vartempl but not expand content
@@ -119,7 +92,8 @@ module TracWiki
     def prepare_y
       #print "prepare_y\n"
       return if @env.key? 'y'
-      arg = @env['arg']
+      #arg = @env['argv']['00']
+      arg = @env['argv']['00']
       return if arg.nil?
       begin
         @env['y'] = YAML.load(arg)
@@ -153,7 +127,7 @@ module TracWiki
         #print "at(#{key}) -> default\n" if cur.nil?
         return default if cur.nil?
       end
-      #print "at(#{key})->#{cur}\n"
+      #rint "at(#{key})->#{cur}\n"
       to_str ? cur.to_s : cur
     end
     def atput(key, val = nil)
@@ -208,7 +182,9 @@ module TracWiki
 
       if ! @parser.template_handler.nil?
         str = @parser.template_handler.call(macro_name, env)
-        if !str.nil?
+        is_defined = !str.nil?
+        @parser.used_templates[macro_name] = is_defined
+        if is_defined
           #print "dep:#{env[:depth]}(#{macro_name}, #{str})\n"
           if env[:depth] > 32
              return "TOO_DEEP_RECURSION(`#{str}`)\n"
@@ -232,18 +208,21 @@ module TracWiki
         env[k] = v if k != :depth && k != 'arg' && k!='argv'
       end
       env[:depth] = (@env[:depth]||0)+1
-      env['arg'] = args.join('|')
       env['argv'] = {}
+      env['argv']['00'] = args.join('|')
+      arg0 = []
 
       idx = 1
       args.each do |arg|
-        if arg =~ /\A\s*(\w+)\s*=\s*(.*)/m
+        if arg =~ /\A\s*(\w+)=\s*(.*)/m
           env[$1] = $2
         else
           env['argv'][idx.to_s] = arg
+          arg0.push arg
           idx+=1
         end
       end
+      env['argv']['0'] = arg0.join('|')
       return Env.new(@parser, env)
     end
 
