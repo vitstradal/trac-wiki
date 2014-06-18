@@ -140,7 +140,7 @@ module TracWiki
 
 
      TAGS_APPEND_NL = [:div, :p, :li, :ol, :ul, :dl, :table, :tr, :td , :th]
-     TAGS_FORCE_PAIR = [:a, :td, :h1, :h2, :h3, :h4, :h5, :h6, :div, :script]
+     TAGS_FORCE_PAIR = [:a, :td, :h1, :h2, :h3, :h4, :h5, :h6, :div, :script, :i]
      TAGS_ALLOVED = [:a,
                      :h1, :h2, :h3, :h4, :h5, :h6,
                      :div, :span, :p, :pre,
@@ -151,7 +151,7 @@ module TracWiki
                      :form, :textarea, :input, :select, :option,
      ]
      TAGS_SKIP_EMPTY = [ :p , :ol, :li, :strong, :em  ]
-     ATTRIBUTES_ALLOWED = { :form  =>  [:action, :meth],
+     ATTRIBUTES_ALLOWED = { :form  =>  [:action, :method],
                             :input =>  [:size, :type, :value, :name],
                             :select => [:multiple, :name],
                             :option => [:disabled, :selected, :label, :value, :name],

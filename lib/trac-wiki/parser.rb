@@ -67,6 +67,9 @@ module TracWiki
     # url base for links
     attr_writer :base
 
+    # csrf protection
+    attr_writer :csrf
+
     # Disable url escaping for local links
     # Escaping: [[/Test]] --> %2FTest
     # No escaping: [[/Test]] --> Test
@@ -198,6 +201,7 @@ module TracWiki
                                  pat = Regexp.new(pat[1..-2]) if pat =~ /\A\/.*\/\Z/
                                  env.expand_arg(0).gsub(pat, env.expand_arg(2))
                          },
+        '!macpos' => proc { |env| "#{env.at('lineno')}.#{env.at('offset')}-#{env.at('elineno')}.#{env.at('eoffset')}"  },
         '!for'   => proc { |env| i_name = env.arg(0)
                                top = env.arg(1)
                                tmpl = env.arg(2)
@@ -482,7 +486,7 @@ module TracWiki
     def parse_macro(macro_name, str, offset, macro_name_size)
       raise "offset is nil" if offset.nil?
       raise "offset is nil" if macro_name_size.nil?
-      @env = Env.new(self) if @env.nil?
+      @env = Env.new(self, {'csrf'=>@csrf}) if @env.nil?
       @env.atput('offset',  offset)
       @env.atput('lineno',  @line_no)
       begin

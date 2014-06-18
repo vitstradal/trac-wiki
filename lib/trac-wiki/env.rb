@@ -5,7 +5,9 @@ module TracWiki
     attr_accessor :env
     def initialize(parser, env = {})
       @parser = parser
-      @env = env
+      @env = env || {}
+      @argv = {}
+      @argv_stack = []
     end
 
     # r: expanded-macro, rest-of-str, lines, offset-in-line
@@ -13,11 +15,19 @@ module TracWiki
       str_size = str.size
       args, rest, lines, offset = parse_balanced(str)
       atput('maclen', str_size - rest.size + macro_name_size) if ! macro_name_size.nil?
+
+
       if macro_name =~ /\A!/
          # {{!cmd}}
          mac_out = parse_macro_cmd(macro_name, args)
       else
          # {{$cmd}},  {{template}}, ...
+         if @argv_stack.size == 0
+           prefix_size  = lines == 0  ? macro_name.size + 2 + at('offset',0).to_i : 0
+           @env['maclines'] = lines
+           @env['eoffset'] = offset + prefix_size 
+           @env['elineno'] = at('lineno', 0).to_i + lines
+         end 
          mac_out = parse_macro_vartempl(macro_name, args)
       end
       return mac_out || '', rest, lines, offset
@@ -43,12 +53,13 @@ module TracWiki
 
     # r: [args], rest-of-str, num-of-lines, offset-last-line
     def parse_balanced(str)
-      str.sub!(/\A\s*\|?/, '')
-      offset = $&.size
-      return [], $', 0, 2 if str =~ /\A}}/
+      str.sub!(/\A(\s*[\r\n])*([ \t]*[\|:]?)/, '')
+      emptylines,  empty  = $1||'', $2||''
+      lines = emptylines.count("\n")
+      offset = empty.size
+      return [], $', 0, offset+2 if str =~ /\A}}/
       #print "_parse_macro_cmd: #{macro_name}, str#{str}\n"
       dep = 0
-      lines = 0
       args = ['']
       while str =~ /{{|}}|\n|\|/
         prefix, match, str  = $`, $&, $'
@@ -92,8 +103,7 @@ module TracWiki
     def prepare_y
       #print "prepare_y\n"
       return if @env.key? 'y'
-      #arg = @env['argv']['00']
-      arg = @env['argv']['00']
+      arg = @argv['00']
       return if arg.nil?
       begin
         @env['y'] = YAML.load(arg)
@@ -106,12 +116,11 @@ module TracWiki
     end
 
     def at(key, default = nil, to_str = true)
-      #print "at(#{key}), env:"
-      #pp @env
-      return @env[key] || default if key.is_a? Symbol
+
+      return @argv[key] if @argv.key? key
+
       prepare_y if key =~ /^y\./
-      key = "argv.#{key}" if key =~ /^\d+$/
-      #print "key: #{key}\n"
+
       cur = @env
       key.split(/\./).each do |subkey|
         subkey = at($1, '') if subkey =~ /\A\$(.*)/
@@ -133,6 +142,13 @@ module TracWiki
     def atput(key, val = nil)
       #print "atput: #{key}, #{val} env:"
       #pp @env
+
+      # local variable
+      if @argv.key? key
+         @argv[key] = val
+         return
+      end
+
       cur = @env
       if val.is_a? Symbol
         @env[key] = val
@@ -175,60 +191,56 @@ module TracWiki
       return args.join('|').strip  if macro_name == '#echo'
       return '' if macro_name == '#'
 
-      env = do_macro_arg_to_env(args)
+      @argv_stack.push @argv
 
-      #print "templ:#{macro_name}env:"
-      #pp(args)
+      @argv = do_macro_arg_to_env(args)
+      ret = _do_macro_temp_low(macro_name)
 
+      @argv = @argv_stack.pop
+      return ret
+    end
+
+    def _do_macro_temp_low(macro_name)
       if ! @parser.template_handler.nil?
-        str = @parser.template_handler.call(macro_name, env)
+        str = @parser.template_handler.call(macro_name, @env)
         is_defined = !str.nil?
         @parser.used_templates[macro_name] = is_defined
         if is_defined
-          #print "dep:#{env[:depth]}(#{macro_name}, #{str})\n"
-          if env[:depth] > 32
+          if @argv_stack.size > 32
              return "TOO_DEEP_RECURSION(`#{str}`)\n"
              #return "TOO_DEEP_RECURSION"
           end
           # FIXME: melo by nahlasit jestli to chce expandovat | wiki expadnovat |raw html
           #print "temp(#{macro_name}) --> : #{str}\n"
           #print "bf ex: [#{str}]\n"
-          str = env.expand(str)
+          str = expand(str)
           #print "af ex: [#{str}]\n"
           return str
         end
       end
-      #print "UMACRO(#{macro_name}|#{args})\n"
-      "UMACRO(#{macro_name}|#{args.join('|')})"
+      "UNKNOWN-MACRO(#{macro_name})"
     end
 
     def do_macro_arg_to_env(args)
-      env  = {}
-      @env.each do  |k,v|
-        env[k] = v if k != :depth && k != 'arg' && k!='argv'
-      end
-      env[:depth] = (@env[:depth]||0)+1
-      env['argv'] = {}
-      env['argv']['00'] = args.join('|')
+      argv = {}
+      argv['00'] = args.join('|')
       arg0 = []
 
       idx = 1
       args.each do |arg|
         if arg =~ /\A\s*(\w+)=\s*(.*)/m
-          env[$1] = $2
+          argv[$1] = $2
         else
-          env['argv'][idx.to_s] = arg
+          argv[idx.to_s] = arg
           arg0.push arg
           idx+=1
         end
       end
-      env['argv']['0'] = arg0.join('|')
-      return Env.new(@parser, env)
+      argv['0'] = arg0.join('|')
+      return argv
     end
 
     def do_macro_var(var_name, args)
-      #print "var(#{var_name})env:"
-      #pp(@env)
       ret = at(var_name, nil)
       return ret if !ret.nil?
       return args.join('|')  if args.size > 0
@@ -238,7 +250,7 @@ module TracWiki
 
     # template expand
     def expand_arg(idx)
-      expand(@env[:cmd_args][idx])
+      expand(arg(idx))
     end
 
     def pp_env
@@ -252,6 +264,7 @@ module TracWiki
           ret << prefix
           # FIXME if macro_name2 =~ /^!/
           mac_out, str, lines, offset = parse_macro_all(macro_name2, str, nil)
+
           ret << mac_out
           #print "Too long macro expadion" if ret.size > 1_000_000
           raise TooLongException if ret.size > 1_000_000
@@ -262,5 +275,4 @@ module TracWiki
       return ret.gsub(/\\\r?\n\s*/, '')
     end
   end
-
 end

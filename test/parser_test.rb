@@ -10,7 +10,7 @@ class Bacon::Context
     options[:template_handler] = self.method(:template_handler)
 
     parser = TracWiki.parser(options)
-    parser.to_html(wiki).should.equal html
+    html.should.equal parser.to_html(wiki)
   end
   def env(wiki, var, val,options = {})
     options[:macro_commands] = { '!print' => proc { |env| env.arg(0) + '! ' }, }
@@ -32,6 +32,10 @@ class Bacon::Context
 
   def template_handler(tname, env)
     case tname
+    when 'testmacpos2'
+      "{{testmacpos}}"
+    when 'testmacpos'
+      "{{!macpos}}"
     when 'ifeqtest'
       "{{!ifeq {{$1}}|{{$2}}|TRUE|FALSE}}"
     when 'vartest2'
@@ -949,11 +953,11 @@ eos
 
     tc "<h1>h1</h1>" , "{{# co{{HUU}}mment }}\n\n\n= h1 =\n{{# Comment2}}\n" 
 
-    tc "<p>UMACRO(macr|ahoj )</p>\n" , "{{macr\nahoj\n}}"
-    tc "<p>ahoj UMACRO(macr|UMACRO(o|))</p>\n" , "ahoj {{macr{{o}}}}"
-    tc "<p>ahoj UMACRO(macro|)</p>\n" , "ahoj {{macro}}"
-    tc "<p>ahoj {{%macrUMACRO(o|)}}</p>\n" , "ahoj {{%macr{{o}}}}"
-    tc "<p>ahoj UMACRO(macr|UMACRO(mac|<strong>o</strong>))</p>\n" , "ahoj {{macr{{mac **o**}}}}"
+    tc "<p>UNKNOWN-MACRO(macr)</p>\n" , "{{macr\nahoj\n}}"
+    tc "<p>ahoj UNKNOWN-MACRO(macr)</p>\n" , "ahoj {{macr{{o}}}}"
+    tc "<p>ahoj UNKNOWN-MACRO(macro)</p>\n" , "ahoj {{macro}}"
+    tc "<p>ahoj {{%macrUNKNOWN-MACRO(o)}}</p>\n" , "ahoj {{%macr{{o}}}}"
+    tc "<p>ahoj UNKNOWN-MACRO(macr)</p>\n" , "ahoj {{macr{{mac **o**}}}}"
     tc "<p>ahoj ahoj</p>\n" , "ahoj {{$mac|ahoj}}"
   end
 
@@ -964,10 +968,15 @@ eos
     # macro errors:
     tc "<p>TOO_DEEP_RECURSION(<tt>{{deep}}</tt>)3</p>\n", "{{deep}}3"
     tc "<p>TOO_LONG_EXPANSION_OF_MACRO(wide)QUIT</p>\n", "{{wide}}3"
-    tc "<p>UMACRO(unknown|)3</p>\n", "{{unknown}}3"
+    tc "<p>UNKNOWN-MACRO(unknown)3</p>\n", "{{unknown}}3"
   end
   it 'should do temlate with args' do
+    tc "<p>jedna::VARTESTPARAM,dve:,p:DVE,arg::VARTESTPARAM|p=DVE</p>\n", "{{vartest::VARTESTPARAM|p=DVE}}"
+    tc "<p>jedna::VARTESTPARAM,dve:,p:DVE,arg::VARTESTPARAM|p=DVE</p>\n", "{{vartest|:VARTESTPARAM|p=DVE}}"
     tc "<p>jedna:VARTESTPARAM,dve:,p:DVE,arg:VARTESTPARAM|p=DVE</p>\n", "{{vartest VARTESTPARAM|p=DVE}}"
+    tc "<p>jedna:VARTESTPARAM,dve:,p:DVE,arg:VARTESTPARAM|p=DVE</p>\n", "{{vartest:VARTESTPARAM|p=DVE}}"
+    tc "<p>jedna:VARTESTPARAM,dve:,p:DVE,arg:VARTESTPARAM|p=DVE</p>\n", "{{vartest  :VARTESTPARAM|p=DVE}}"
+    tc "<p>jedna:VARTESTPARAM,dve:,p:DVE,arg:VARTESTPARAM|p=DVE</p>\n", "{{vartest  |VARTESTPARAM|p=DVE}}"
     tc "<p>jedna:VARTESTPARAM,dve:TRI,p:DVE,arg:VARTESTPARAM|p=DVE|TRI</p>\n", "{{vartest VARTESTPARAM|p=DVE|TRI}}"
     tc "<p>jedna:VARTESTPARAM,dve:TRI,p:DVE,arg:VARTESTPARAM|TRI|p=DVE|tridef</p>\n", "{{vartest2 VARTESTPARAM|p=DVE|dva=TRI}}"
     tc "<p>ahoj |</p>\n", "ahoj {{!}}"
@@ -1092,26 +1101,12 @@ eos
 
   it 'should parse offset and template' do
     tc "<p>ahoj ahoj,19</p>\n" , "ahoj {{$mac|ahoj}},{{$offset}}"
+    tc "<p>ahoj ahoj,19</p>\n" , "ahoj {{$mac:ahoj}},{{$offset}}"
     tc "<p>ahoj line one line two ,12</p>\n" , "ahoj {{nl}},{{$offset}}"
     tc "<ul><li>line one</li>\n<li>line two,8</li>\n</ul>\n" , "{{nl2}},{{$offset}}"
     tc "<ul><li>line one</li>\n<li>line two 8</li>\n</ul>\n" , "{{nl2}} {{$offset}}"
     # in the future:
     #tc "<p>ble * line one</p>\n<ul><li>line two 8</li>\n</ul>\n" , "ble {{nl2}} {{$offset}}"
-  end
-  it 'should parse macro len' do
-    tc "<p>11</p>\n" , "{{$maclen}}"
-    tc "<p>17</p>\n" , "{{$maclen|12345}}"
-    tc "<p>18</p>\n" , "{{$maclen| 12345}}"
-    tc "<p>19</p>\n" , "{{$maclen | 12345}}"
-    tc "<p>18</p>\n" , "{{$maclen |12345}}"
-    tc "<p>18</p>\n" , "{{$maclen |12345}}"
-    tc "<p>15</p>\n" , "{{$maclen|kuk}}"
-    tc "<p>15</p>\n" , "{{$maclen|123}}"
-    tc "<p>18</p>\n" , "{{$maclen|žížala}}"
-    tc "<p>37</p>\n" , "{{$maclen|{{$maclen}}{{!echo ahoj}}}}"
-    tc "<p><strong>37</strong></p>\n" , "**{{$maclen|{{$maclen}}{{!echo ahoj}}}}**"
-    tc "<p>28</p>\n" , "{{$maclen|a=e|b=c|d={{$e}}}}"
-    tc "<p>maclen:14</p>\n" , "{{maclentest}}"
   end
   it 'should parse macro slash' do
     tc "<p>slash/slash</p>\n" , "{{/slash}}"
@@ -1153,6 +1148,52 @@ eos
     used_templates "{{varnula}}", "varnula:true"
     used_templates "{{test}}", "test:true,west:true"
     used_templates "{{testundef}}", "testundef:true,westundef:false"
+  end
+  it 'should parse macro len' do
+    tc "<p>11</p>\n" , "{{$maclen}}"
+    tc "<p>17</p>\n" , "{{$maclen|12345}}"
+    tc "<p>18</p>\n" , "{{$maclen| 12345}}"
+    tc "<p>19</p>\n" , "{{$maclen | 12345}}"
+    tc "<p>18</p>\n" , "{{$maclen |12345}}"
+    tc "<p>18</p>\n" , "{{$maclen |12345}}"
+    tc "<p>15</p>\n" , "{{$maclen|kuk}}"
+    tc "<p>15</p>\n" , "{{$maclen|123}}"
+    tc "<p>18</p>\n" , "{{$maclen|žížala}}"
+    tc "<p>37</p>\n" , "{{$maclen|{{$maclen}}{{!echo ahoj}}}}"
+    tc "<p><strong>37</strong></p>\n" , "**{{$maclen|{{$maclen}}{{!echo ahoj}}}}**"
+    tc "<p>28</p>\n" , "{{$maclen|a=e|b=c|d={{$e}}}}"
+    tc "<p>maclen:14</p>\n" , "{{maclentest}}"
+  end
+  it 'should parse macro eoffset' do
+    tc "<p>16</p>\n" , "{{$eoffset 123}}"
+    tc "<p>12</p>\n" , "{{$eoffset}}"
+    tc "<p>ABC15</p>\n" , "ABC{{$eoffset}}"
+    tc "<p>A B C13</p>\n" , "A\nB\nC{{$eoffset}}"
+    tc "<p>A B C18</p>\n" , "A\nB\nC{{$eoffset ahoj}}"
+    tc "<p>A B C18</p>\n" , "A\nB\nC{{$eoffset ahoj}}\n"
+    tc "<p>A B 17</p>\n" , "A\nB\n{{$eoffset ahoj}}\n"
+    tc "<p>A B 6</p>\n" , "A\nB\n{{$eoffset|\nahoj}}\n"
+    tc "<p>A B 6</p>\n" , "A\nB\n{{$eoffset \nahoj}}\n"
+    tc "<p>A B 6</p>\n" , "A\nB\n{{$eoffset \n  tak to teda\nahoj}}\n"
+    tc "<p>A B 6BBB</p>\n" , "A\nB\n{{$eoffset \n  tak to teda\nahoj}}BBB\n"
+    tc "<p>A B 7</p>\n" , "A\nB\n{{$eoffset \t\t\n\t\n\r\f  \n\tahoj}}\n"
+    tc "<p>A B 6</p>\n" , "A\nB\n{{$elineno \t\t\n\t\n\r\f  \n\tahoj}}\n"
+    tc "<p>A B 6</p>\n" , "A\nB\n{{$elineno \t\t\n\t\n\r\r\r\f  \n\tahoj}}\n"
+    tc "<p>A B 7</p>\n" , "A\nB\n{{$elineno \t\t\n\t\n\r\r\r\f\n  \n\tahoj}}\n"
+    tc "<p>A B 3</p>\n" , "A\nB\n{{$elineno}}\n"
+    tc "<p>A B 4</p>\n" , "A\nB\n{{$elineno\nbla}}\n"
+  end
+  it 'should parse {{!macpos}}' do
+     tc "<p>1.0-1.14</p>\n", "{{testmacpos}}"
+     tc "<p>2.0-2.14</p>\n", "\n{{testmacpos}}\n"
+     tc "<p>1.0-1.30</p>\n", "{{testmacpos alsdkfjlsadjfk }}"
+     tc "<p>1.0-2.10</p>\n", "{{testmacpos\n12345678}}"
+     tc "<p>Ahoj 2.0-3.10</p>\n", "Ahoj\n{{testmacpos\n12345678}}"
+     tc "<p>1.0-1.15</p>\n", "{{testmacpos2}}"
+     tc "<p>2.0-2.15</p>\n", "\n{{testmacpos2}}\n"
+     tc "<p>1.0-1.31</p>\n", "{{testmacpos2 alsdkfjlsadjfk }}"
+     tc "<p>1.0-2.10</p>\n", "{{testmacpos2\n12345678}}"
+     tc "<p>Ahoj 2.0-3.10</p>\n", "Ahoj\n{{testmacpos2\n12345678}}"
   end
 end
 # vim: tw=0
