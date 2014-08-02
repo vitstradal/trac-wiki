@@ -378,6 +378,9 @@ describe TracWiki::Parser do
     tc "<dl><dt>Monty::Python</dt><dd> definition</dd></dl>\n", "Monty::Python:: definition\n"
     tc "<dl><dt>::Python</dt><dd> definition</dd></dl>\n", "::Python:: definition\n"
   end
+  it 'should parse definition list with dia' do
+    tc "<dl><dt>Monty Pýthón</dt><dd> definition</dd></dl>\n", "Monty Pýthón:: \n   definition\n"
+  end
   it 'should not parse definition list' do
     # FIXME: trailing space 
     tc "<p>Monty::Python::definition</p>\n", "Monty::Python::definition\n"
@@ -1194,6 +1197,12 @@ eos
      tc "<p>1.0-1.31</p>\n", "{{testmacpos2 alsdkfjlsadjfk }}"
      tc "<p>1.0-2.10</p>\n", "{{testmacpos2\n12345678}}"
      tc "<p>Ahoj 2.0-3.10</p>\n", "Ahoj\n{{testmacpos2\n12345678}}"
+  end
+  it 'should expand html  attrs' do
+     tc "<div class=\"1\">TEST</div>\n", "<div class=\"{{$lineno}}\">TEST</div></p>\n", allow_html: true
+     tc "<div class=\"A1B1\">TEST</div>\n", "<div class=\"A{{$lineno}}B{{$lineno}}\">TEST</div></p>\n", allow_html: true
+     tc "<div class=\"AHOJ\">TEST</div>\n", "{{!set ahoj|AHOJ}}<div class=\"{{$ahoj}}\">TEST</div></p>\n", allow_html: true
+     tc "<div class=\"**AHOJ**\">TEST</div>\n", "{{!set ahoj|AHOJ}}<div class=\"**{{$ahoj}}**\">TEST</div></p>\n", allow_html: true
   end
 end
 # vim: tw=0

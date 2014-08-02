@@ -55,10 +55,7 @@ module TracWiki
     #   ...
     # ]
     attr_accessor :headings
-
-    def env
-      @env
-    end
+    attr_accessor :env
 
     attr_reader :used_templates
     @used_templates = {}
@@ -66,9 +63,6 @@ module TracWiki
 
     # url base for links
     attr_writer :base
-
-    # csrf protection
-    attr_writer :csrf
 
     # Disable url escaping for local links
     # Escaping: [[/Test]] --> %2FTest
@@ -137,8 +131,9 @@ module TracWiki
     MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ ( \$[\$\.\w]+ | [\#!\/]\w* | \w+)  )/mx
 
     # Create a new Parser instance.
-    def initialize(options = nil)
+    def initialize(options = {})
       init_macros
+      @env = Env.new(self)
       @macros = true
       @allowed_schemes = %w(http https ftp ftps)
       macro_commands = options.delete :macro_commands
@@ -486,7 +481,6 @@ module TracWiki
     def parse_macro(macro_name, str, offset, macro_name_size)
       raise "offset is nil" if offset.nil?
       raise "offset is nil" if macro_name_size.nil?
-      @env = Env.new(self, {'csrf'=>@csrf}) if @env.nil?
       @env.atput('offset',  offset)
       @env.atput('lineno',  @line_no)
       begin
@@ -679,11 +673,12 @@ module TracWiki
 
     def _parse_attrs_to_hash(str)
       ret = {}
+      @env.atput('lineno', @line_no);
       while str =~ /\A\s*(\w+)\s*=\s*'([^>']*)'/ ||
             str =~ /\A\s*(\w+)\s*=\s*"([^>"]*)"/ ||
             str =~ /\A\s*(\w+)\s*=\s*(\S*)/
-       ret[$1] = $2
-       str = $'
+        ret[$1] = @env.expand($2)
+        str = $'
       end
       ret
     end
@@ -780,7 +775,8 @@ module TracWiki
         # empty line
         when str =~ /\A\s*$(\r?\n)?/
           end_paragraph
-        when str =~ /\A([:\w\s]+)::(\s+|\r?\n)/
+        #when str =~ /\A([:\w\s]+)::(\s+|\r?\n)/
+        when str =~ /\A(.+)::(\s+|\r?\n)/
           do_term($1)
         # li
         when str =~ /\A((\s*)([*-]|[aAIi\d]\.)\s+)(.*?)$(\r?\n)?/

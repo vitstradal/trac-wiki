@@ -159,6 +159,7 @@ module TracWiki
                             :img   =>  [:src, :width, :height, :align, :valign, :style, :alt, :title],
                             :td    =>  [:colspan, :rowspan, :style],
                             :th    =>  [:colspan, :rowspan, :style],
+                            :ol    =>  [:type ],
                             :_all  =>  [:class, :title, :id],
                            }
 

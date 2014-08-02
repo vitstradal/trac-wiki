@@ -202,7 +202,7 @@ module TracWiki
 
     def _do_macro_temp_low(macro_name)
       if ! @parser.template_handler.nil?
-        str = @parser.template_handler.call(macro_name, @env)
+        str = @parser.template_handler.call(macro_name, @env, @argv)
         is_defined = !str.nil?
         @parser.used_templates[macro_name] = is_defined
         if is_defined
