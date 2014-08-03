@@ -330,7 +330,7 @@ module TracWiki
     # markup, for example to add html additional attributes or
     # to put divs around the imgs.
     def make_image(uri, attrs='')
-      @tree.tag(:img, make_image_attrs(@base + uri, attrs))
+      @tree.tag(:img, make_image_attrs(uri, attrs))
     end
 
     def make_image_attrs(uri, attrs)

@@ -30,7 +30,7 @@ class Bacon::Context
 
   end
 
-  def template_handler(tname, env)
+  def template_handler(tname, env, argv)
     case tname
     when 'testmacpos2'
       "{{testmacpos}}"
@@ -582,6 +582,7 @@ describe TracWiki::Parser do
 
     # Image tags should be escape
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]")
+    tc("<p><img src=\"/ahoj/bhoj/bla/image.jpg\"/></p>\n", "[[Image(bla/image.jpg)]]", :base => "/ahoj/bhoj", :no_escape => true)
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]", :no_link=>true)
     tc("<p><img alt=\"a%22tag%22\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]")
     tc("<p><img alt=\"a%22tag%22\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]", :no_link=>true)
