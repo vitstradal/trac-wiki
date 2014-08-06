@@ -64,6 +64,9 @@ module TracWiki
     # url base for links
     attr_writer :base
 
+    # url base for /links
+    attr_writer :root
+
     # Disable url escaping for local links
     # Escaping: [[/Test]] --> %2FTest
     # No escaping: [[/Test]] --> Test
@@ -140,8 +143,10 @@ module TracWiki
       @macro_commands.merge! macro_commands if ! macro_commands.nil?
       @no_escape = nil
       @base = ''
+      @root = ''
       options.each_pair {|k,v| send("#{k}=", v) }
       @base += '/' if !@base.empty? && @base[-1] != '/'
+      @root += '/' if @root.empty? || @root[-1] != '/'
     end
 
     def text(text)
@@ -316,9 +321,15 @@ module TracWiki
       # FIXME: xss when no_escape
       link, anch = link.split(/#/, 2)
       if no_escape?
-        return "#{@base}#{link}" if ! anch
+        prefix = @base
+        if link =~ /^\/(.*)/
+          link  = $1
+          prefix = @root
+        end
+
+        return "#{prefix}#{link}" if ! anch
         return "##{anch}" if  link == ''
-        return "#{@base}#{link}##{anch}"
+        return "#{prefix}#{link}##{anch}"
       end
       return "#{@base}#{escape_url(link)}" if ! anch
       return "##{escape_url(anch)}" if  link == ''

@@ -275,6 +275,14 @@ describe TracWiki::Parser do
     tc "<p><a href=\"link#link\">link#link</a></p>\n", "[[link#link]]"
     tc "<p><a href=\"#link\">#link</a></p>\n", "[[#link]]"
 
+    tc "<p><a href=\"BASE/link\">link</a></p>\n", "[[link]]",  base: 'BASE', root: 'ROOT', no_escape: true
+    tc "<p><a href=\"ROOT/link\">/link</a></p>\n", "[[/link]]",  base: 'BASE', root: 'ROOT', no_escape: true
+    tc "<p><a href=\"/link\">/link</a></p>\n", "[[/link]]",  base: 'BASE', no_escape: true
+
+    tc "<p><a href=\"BASE/link\">bla</a></p>\n", "[[link | bla ]]",  base: 'BASE', root: 'ROOT', no_escape: true
+    tc "<p><a href=\"ROOT/link\">bla</a></p>\n", "[[/link | bla ]]",  base: 'BASE', root: 'ROOT', no_escape: true
+    tc "<p><a href=\"/link\">bla</a></p>\n", "[[/link | bla]]",  base: 'BASE', no_escape: true
+
     #  Links can appear in paragraphs (i.e. inline item)
     tc "<p>Hello, <a href=\"world\">world</a></p>\n", "Hello, [[world]]"
 
