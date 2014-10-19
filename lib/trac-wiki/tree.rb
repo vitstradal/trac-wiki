@@ -163,6 +163,7 @@ module TracWiki
                             :_all  =>  [:class, :title, :id],
                            }
 
+     ATTRIBUTE_DATA_REX = /\Adata-[-a-z]+\Z/i
      ATTRIBUTE_STYLE_REX = /\A( text-align:(center|right|left) |
                                 margin:    \d+(px|em)? |
                                 ;
@@ -172,11 +173,11 @@ module TracWiki
        ret = ['']
        tag_attrs = ATTRIBUTES_ALLOWED[tag] || []
        attrs.each_pair do |k,v|
+         #print "a: #{k} #{v}\n"
          next if v.nil?
          k_sym = k.to_sym
-         next if ! ( ATTRIBUTES_ALLOWED[:_all].include?(k_sym) || tag_attrs.include?(k_sym) )
-         next if k == :style && v !~ ATTRIBUTE_STYLE_REX
-         #print "style: #{v}\n" if k == :style
+         next if ! ( ATTRIBUTES_ALLOWED[:_all].include?(k_sym) || tag_attrs.include?(k_sym) || k =~ ATTRIBUTE_DATA_REX )
+         next if k_sym == :style && v !~ ATTRIBUTE_STYLE_REX
          ret.push "#{TracWiki::Parser.escapeHTML(k.to_s)}=\"#{TracWiki::Parser.escapeHTML(v.to_s)}\""
        end
        return ret.sort.join(' ')

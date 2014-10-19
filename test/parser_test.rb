@@ -1213,5 +1213,12 @@ eos
      tc "<div class=\"AHOJ\">TEST</div>\n", "{{!set ahoj|AHOJ}}<div class=\"{{$ahoj}}\">TEST</div></p>\n", allow_html: true
      tc "<div class=\"**AHOJ**\">TEST</div>\n", "{{!set ahoj|AHOJ}}<div class=\"**{{$ahoj}}**\">TEST</div></p>\n", allow_html: true
   end
+  it 'should parse data-* ' do
+     tc "<div data-coffie=\"tea\">TEST</div>\n", "<div data-coffie=\"tea\">TEST</div>\n", allow_html: true
+     tc "<div data-coffie-break=\"tea\">TEST</div>\n", "<div data-coffie-break=\"tea\">TEST</div>\n", allow_html: true
+     tc "<div>TEST</div>\n", "<div data-coffie-break9=\"tea\">TEST</div>\n", allow_html: true
+
+     tc "<p>&lt;div data-coffie-break=&quot;tea&quot;&gt;TEST&lt;/div&gt;</p>\n", "<div data-coffie-break=\"tea\">TEST</div>\n", allow_html: false
+  end
 end
 # vim: tw=0

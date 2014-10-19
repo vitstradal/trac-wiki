@@ -685,9 +685,9 @@ module TracWiki
     def _parse_attrs_to_hash(str)
       ret = {}
       @env.atput('lineno', @line_no);
-      while str =~ /\A\s*(\w+)\s*=\s*'([^>']*)'/ ||
-            str =~ /\A\s*(\w+)\s*=\s*"([^>"]*)"/ ||
-            str =~ /\A\s*(\w+)\s*=\s*(\S*)/
+      while str =~ /\A\s*([-\w]+)\s*=\s*'([^>']*)'/ ||
+            str =~ /\A\s*([-\w]+)\s*=\s*"([^>"]*)"/ ||
+            str =~ /\A\s*([-\w]+)\s*=\s*(\S*)/
         ret[$1] = @env.expand($2)
         str = $'
       end
