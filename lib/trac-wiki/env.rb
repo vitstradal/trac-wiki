@@ -96,6 +96,11 @@ module TracWiki
       end
       "UCMD(#{macro_name}|#{@env['arg']})"
     end
+
+    def arg_count
+      @env[:cmd_args].size
+    end
+
     def arg(idx)
       @env[:cmd_args][idx] || ''
     end
@@ -131,10 +136,16 @@ module TracWiki
           cur = cur[subkey.to_i]
         else
           #print "at(#{key})->: default"
-          return default
+          cur = nil
         end
         #print "at(#{key}) -> default\n" if cur.nil?
-        return default if cur.nil?
+        if cur.nil?
+          if ! @parser.at_callback.nil?
+            val = @parser.at_callback.call(key, self) 
+            return val if ! val.nil?
+          end
+          return default
+        end
       end
       #rint "at(#{key})->#{cur}\n"
       to_str ? cur.to_s : cur
@@ -204,7 +215,7 @@ module TracWiki
       if ! @parser.template_handler.nil?
         str = @parser.template_handler.call(macro_name, @env, @argv)
         is_defined = !str.nil?
-        @parser.used_templates[macro_name] = is_defined
+        @parser.used_templates[macro_name] = is_defined if macro_name != 'unkmacro'
         if is_defined
           if @argv_stack.size > 32
              return "TOO_DEEP_RECURSION(`#{str}`)\n"
@@ -218,12 +229,16 @@ module TracWiki
           return str
         end
       end
-      "UNKNOWN-MACRO(#{macro_name})"
+      #return "UNKNOWN-MACRO(#{macro_name})"
+      return "UNKNOWN-MACRO(#{@argv['0']})" if macro_name == 'unkmacro'
+      return "{{unkmacro #{macro_name}}}" if @argv['##'] == '0'
+      return "{{unkmacro #{macro_name}|#{@argv['00']}}}"
     end
 
     def do_macro_arg_to_env(args)
       argv = {}
       argv['00'] = args.join('|')
+      argv['##'] = args.size.to_s
       arg0 = []
 
       idx = 1
@@ -237,6 +252,7 @@ module TracWiki
         end
       end
       argv['0'] = arg0.join('|')
+      argv['#'] = arg0.size.to_s
       return argv
     end
 

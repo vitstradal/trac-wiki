@@ -10,12 +10,14 @@ class Bacon::Context
     options[:template_handler] = self.method(:template_handler)
 
     parser = TracWiki.parser(options)
+    parser.at_callback = Proc.new { |k,env| k == 'MEOW' ? 'WUF' : nil }
     html.should.equal parser.to_html(wiki)
   end
   def env(wiki, var, val,options = {})
     options[:macro_commands] = { '!print' => proc { |env| env.arg(0) + '! ' }, }
     options[:template_handler] = self.method(:template_handler)
     parser = TracWiki.parser(options)
+    parser.at_callback = Proc.new { |k,env| k == 'MEOW' ? 'HAF' : nil }
     parser.to_html(wiki)
     parser.env.at(var).should.equal val
   end
@@ -70,6 +72,9 @@ class Bacon::Context
       "off:{{$offset}}"
     when '/slash'
       "slash/slash"
+    when 'unkmacro'
+      #"UNKNOWN-MACRO:!{{!.{{$0}}}}."
+      "UNKNOWN-MACRO:!{{!.{{$1}}}}."
     else
       nil
       #"UNK_TEMPL(#{tname})"
@@ -965,11 +970,11 @@ eos
 
     tc "<h1>h1</h1>" , "{{# co{{HUU}}mment }}\n\n\n= h1 =\n{{# Comment2}}\n" 
 
-    tc "<p>UNKNOWN-MACRO(macr)</p>\n" , "{{macr\nahoj\n}}"
-    tc "<p>ahoj UNKNOWN-MACRO(macr)</p>\n" , "ahoj {{macr{{o}}}}"
-    tc "<p>ahoj UNKNOWN-MACRO(macro)</p>\n" , "ahoj {{macro}}"
-    tc "<p>ahoj {{%macrUNKNOWN-MACRO(o)}}</p>\n" , "ahoj {{%macr{{o}}}}"
-    tc "<p>ahoj UNKNOWN-MACRO(macr)</p>\n" , "ahoj {{macr{{mac **o**}}}}"
+    tc "<p>UNKNOWN-MACRO:{{macr}}.</p>\n" , "{{macr\nahoj\n}}"
+    tc "<p>ahoj UNKNOWN-MACRO:{{macr}}.</p>\n" , "ahoj {{macr{{o}}}}"
+    tc "<p>ahoj UNKNOWN-MACRO:{{macro}}.</p>\n" , "ahoj {{macro}}"
+    tc "<p>ahoj {{%macrUNKNOWN-MACRO:{{o}}.}}</p>\n" , "ahoj {{%macr{{o}}}}"
+    tc "<p>ahoj UNKNOWN-MACRO:{{macr}}.</p>\n" , "ahoj {{macr{{mac **o**}}}}"
     tc "<p>ahoj ahoj</p>\n" , "ahoj {{$mac|ahoj}}"
   end
 
@@ -980,7 +985,8 @@ eos
     # macro errors:
     tc "<p>TOO_DEEP_RECURSION(<tt>{{deep}}</tt>)3</p>\n", "{{deep}}3"
     tc "<p>TOO_LONG_EXPANSION_OF_MACRO(wide)QUIT</p>\n", "{{wide}}3"
-    tc "<p>UNKNOWN-MACRO(unknown)3</p>\n", "{{unknown}}3"
+    tc "<p>UNKNOWN-MACRO:{{unknown}}.4</p>\n", "{{unknown u1|u2}}4"
+    tc "<p>UNKNOWN-MACRO:{{unknown}}.3</p>\n", "{{unknown}}3"
   end
   it 'should do temlate with args' do
     tc "<p>jedna::VARTESTPARAM,dve:,p:DVE,arg::VARTESTPARAM|p=DVE</p>\n", "{{vartest::VARTESTPARAM|p=DVE}}"
@@ -1006,6 +1012,37 @@ eos
     #tc "<p>„text“</p>\n", "&bdquo;text&ldquo;"
     tc "<p>&nbsp;</p>\n", "&nbsp;"
     tc "<p>&bdquo;text&ldquo;</p>\n", "&bdquo;text&ldquo;"
+  end
+  it 'should !ifeq' do
+    tc "<p>ELSE.</p>\n", "{{!ifeq  WHAT|C1|A1|C2|A2|C3|A3|ELSE}}."
+    tc "<p>A1.</p>\n", "{{!ifeq  C1|C1|A1|C2|A2|C3|A3|ELSE}}."
+    tc "<p>A2.</p>\n", "{{!ifeq  C2|C1|A1|C2|A2|C3|A3|ELSE}}."
+    tc "<p>A3.</p>\n", "{{!ifeq  C3|C1|A1|C2|A2|C3|A3|ELSE}}."
+    tc "<p>A1.</p>\n", "{{!ifeq  C1|C1|A1|C2|A2|C3|A3}}."
+    tc "<p>A2.</p>\n", "{{!ifeq  C2|C1|A1|C2|A2|C3|A3}}."
+    tc "<p>A3.</p>\n", "{{!ifeq  C3|C1|A1|C2|A2|C3|A3}}."
+    tc "<p>.</p>\n", "{{!ifeq  C4|C1|A1|C2|A2|C3|A3}}."
+    tc "<p>A1.</p>\n", "{{!ifeq  C1|C1|A1
+                                   |C2|A2
+                                   |C3|A3}}."
+    tc "<p>A2.</p>\n", "{{!ifeq  C2|C1|A1
+                                   |C2|A2
+                                   |C3|A3}}."
+    tc "<p>A3.</p>\n", "{{!ifeq  C3|C1|A1
+                                   |C2|A2
+                                   |C3|A3}}."
+    tc "<p>.</p>\n",   "{{!ifeq  C4|C1|A1
+                                   |C2|A2
+                                   |C3|A3}}."
+    tc "<p>ELSE.</p>\n", "{{!ifeq  C4|C1|A1
+                                    |C2|A2
+                                    |C3|A3
+                                       |ELSE}}."
+    tc "<p>A1.</p>\n", "{{!ifeq  C1|C1|A1}}."
+    tc "<p>.</p>\n", "{{!ifeq  C4|C1|A1}}."
+    tc "<p>.</p>\n", "{{!ifeq  C1|C1|}}."
+    tc "<p>C1.</p>\n", "{{!ifeq  C1|C1}}."
+    tc "<p>.</p>\n", "{{!ifeq  C1}}."
   end
   it 'should plugin' do
     tc "<p>AHOJTE!</p>\n", "{{!print AHOJTE}}"
@@ -1212,6 +1249,11 @@ eos
      tc "<div class=\"A1B1\">TEST</div>\n", "<div class=\"A{{$lineno}}B{{$lineno}}\">TEST</div></p>\n", allow_html: true
      tc "<div class=\"AHOJ\">TEST</div>\n", "{{!set ahoj|AHOJ}}<div class=\"{{$ahoj}}\">TEST</div></p>\n", allow_html: true
      tc "<div class=\"**AHOJ**\">TEST</div>\n", "{{!set ahoj|AHOJ}}<div class=\"**{{$ahoj}}**\">TEST</div></p>\n", allow_html: true
+  end
+  it 'should parse at_callback ' do
+     tc "<p>WUF</p>\n", "{{$MEOW|meow}}\n"
+     tc "<p>meow</p>\n", "{{$UNKVAR|meow}}\n"
+     tc "<p>cat:</p>\n", "cat:{{$UNKVAR}}\n"
   end
   it 'should parse data-* ' do
      tc "<div data-coffie=\"tea\">TEST</div>\n", "<div data-coffie=\"tea\">TEST</div>\n", allow_html: true

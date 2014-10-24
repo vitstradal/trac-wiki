@@ -118,6 +118,11 @@ Project page on github:
    * `$0` all parameters (without named)
    * `$00` all parameters (with named)
 
+* `{{unknown_macro par1}}` is expanded  to `{{unkmacro unknown_macro|par1}}`,
+   you have to specify `uknmacro` macro. If not, error strig
+   `UNKNOWN-MACRO(unkmacro)`
+   is generated.
+
 * `{{!command}}`
 
 == BUGS ==

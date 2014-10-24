@@ -125,17 +125,21 @@ module TracWiki
     # result fo `template_handler('myCoolMacro') inserted
     attr_accessor :template_handler
 
+    # Proc or nil
+    # at_callback.call(env, key) -> computed value
+    attr_accessor :at_callback
 
     # macro {{$var}} | {{#comment}} | {{!cmd}} |  {{template}} | {{/template}}
     # string begins with macro
     MACRO_BEG_REX =  /\A\{\{ ( \$[\$\.\w]+ | [\#!\/]\w* |\w+ ) /x
-    MACRO_BEG_INSIDE_REX =  /\A(.*?)(?<!\{)\{\{ ( \$[\$\.\w]+ | [\#!\/]\w* | \w+ ) /xm
+    MACRO_BEG_INSIDE_REX =  /\A(.*?) (?<!\{|!|!\{) \{\{ ( \$[\$\.\w]+ | [\#!\/]\w* | \w+ ) /xm
     # find end of marcro or begin of inner macro
     MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ ( \$[\$\.\w]+ | [\#!\/]\w* | \w+)  )/mx
 
     # Create a new Parser instance.
     def initialize(options = {})
       init_macros
+      @at_callback = nil
       @env = Env.new(self)
       @macros = true
       @allowed_schemes = %w(http https ftp ftps)
@@ -193,7 +197,29 @@ module TracWiki
 
     def init_macros
       @macro_commands = {
-        '!ifeq'  => proc { |env| env.expand_arg(0) == env.expand_arg(1) ? env.expand_arg(2) : env.expand_arg(3) },
+        '!ifeq'  => proc { |env| what = env.expand_arg(0)
+                                 count = env.arg_count
+                                 i = 1
+                                 ret = ''
+                                 while count > i
+                                     argi = env.expand_arg(i)
+                                     # this is else:
+                                     if count <= i + 1
+                                       ret = argi
+                                       break
+                                     end
+
+                                     # we found it
+                                     if what == argi
+                                       ret = env.expand_arg(i+1)
+                                       break
+                                     end
+
+                                     # next
+                                     i +=2
+                                 end
+                                 ret.sub /\n\s+\Z/, "\n"
+                         },
         '!ifdef' => proc { |env| env.at(env.expand_arg(0), nil, false).nil? ? env.expand_arg(2) : env.expand_arg(1) },
         '!set'   => proc { |env| env[env.expand_arg(0)] = env.expand_arg(1); '' },
         '!yset'  => proc { |env| env[env.expand_arg(0)] = YAML.load(env.arg(1)); '' },
@@ -472,8 +498,12 @@ module TracWiki
           toggle_tag 'sup', $&            # ^{}
         when str =~ /\A,,/
           toggle_tag 'sub', $&            # _{}
-        when str =~ /\A!(\{\{|[^\s])/
+        when str =~ /\A!\./
+          @tree.add('')                   # !. \relax 
+        when str =~ /\A!(\{\{|[\S])/
           @tree.add($1)                   # !neco !{{
+#        when str =~ /\A!(\{\{)/
+#          @tree.add($1)                   # !neco !{
         when str =~ /\A./
           @tree.add($&)                   # ordinal char
         end
