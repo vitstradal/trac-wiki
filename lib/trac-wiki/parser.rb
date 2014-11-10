@@ -218,7 +218,7 @@ module TracWiki
                                      # next
                                      i +=2
                                  end
-                                 ret.sub /\n\s+\Z/, "\n"
+                                 ret.sub /\n\s+\Z/, ''
                          },
         '!ifdef' => proc { |env| env.at(env.expand_arg(0), nil, false).nil? ? env.expand_arg(2) : env.expand_arg(1) },
         '!set'   => proc { |env| env[env.expand_arg(0)] = env.expand_arg(1); '' },
@@ -410,7 +410,7 @@ module TracWiki
     end
 
     def edit_heading_link(section)
-        @tree.tag(:a, { class:  @edit_heading_class, href: "?edit=#{section}"}, "edit")
+        @tree.tag(:a, { class:  @edit_heading_class, id:"h#{section}", href: "?edit=#{section}"}, "edit")
     end
 
     def make_explicit_link(link)

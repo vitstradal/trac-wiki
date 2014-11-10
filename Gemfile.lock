@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    trac-wiki (0.3.23)
+    trac-wiki (0.3.27)
 
 GEM
   remote: https://rubygems.org/

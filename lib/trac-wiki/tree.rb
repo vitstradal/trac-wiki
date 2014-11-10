@@ -160,13 +160,14 @@ module TracWiki
                             :td    =>  [:colspan, :rowspan, :style],
                             :th    =>  [:colspan, :rowspan, :style],
                             :ol    =>  [:type ],
-                            :_all  =>  [:class, :title, :id],
+                            :_all  =>  [:class, :title, :id, :style],
                            }
 
      ATTRIBUTE_DATA_REX = /\Adata-[-a-z]+\Z/i
      ATTRIBUTE_STYLE_REX = /\A( text-align:(center|right|left) |
                                 margin:    \d+(px|em)? |
-                                ;
+                                (background|color):    [-_#a-zA-Z0-9]+ |
+                                [\s;]
                              )+\Z/x
      def attrs_to_s(tag, attrs)
        return '' if attrs.nil? || attrs.size == 0

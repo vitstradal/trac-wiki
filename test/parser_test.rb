@@ -1001,7 +1001,7 @@ eos
     tc "<p>jedna:be||not to be,dve:,p:,arg:be||not to be</p>\n", "{{vartest be{{!}}{{!}}not to be}}"
   end
   it 'should support options' do
-    tc "<h3>h1<a class=\"editheading\" href=\"?edit=1\">edit</a></h3>", "=== h1 ==", edit_heading: true
+    tc "<h3>h1<a class=\"editheading\" href=\"?edit=1\" id=\"h1\">edit</a></h3>", "=== h1 ==", edit_heading: true
   end
   it 'should not html' do
     tc "<p>&lt;b&gt;&lt;/b&gt;</p>\n", "<b></b>\n"
@@ -1083,6 +1083,8 @@ eos
     tc "<p><span>Span</span></p>\n", "<span>Span</span>\n", allow_html: true
     tc "<p><strong><span>Span</span></strong></p>\n", "**<span>Span</span>**\n", allow_html: true
     tc "<div class=\"ahoj\">Div</div>\n", "<div class=\"ahoj\">Div</div>\n", allow_html: true
+    tc "<div style=\"background:red\">Div</div>\n", "<div style=\"background:red\">Div</div>\n", allow_html: true
+    tc "<div style=\"background:red \">Div</div>\n", "<div style=\"background:red \">Div</div>\n", allow_html: true
     tc "<p><strong>ahoj</strong></p>\n<div class=\"ahoj\">Div</div>\n", "**ahoj<div class=\"ahoj\">Div</div>\n", allow_html: true
     tc "<p><span>Span</span><span>Span</span></p>\n", "<span>Span</span><span>Span</span>\n", allow_html: true
     tc "<p><em><b>boldoitali</b></em>cE</p>\n", "<p>''<b>boldoitali''c</b>E</p>", allow_html: true
