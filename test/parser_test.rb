@@ -72,9 +72,19 @@ class Bacon::Context
       "off:{{$offset}}"
     when '/slash'
       "slash/slash"
+    when 'argcount'
+      "{{$#}},{{$##}}"
+    when 'argi'
+      "{{$i}}:{{!arg {{$i}}}}."
+    when 'forargs'
+      "{{!forargs i||{{$i}}:{{!arg {{$i}}}},}}"
+    when 'forargs2'
+      "{{!forargs i|2|{{$i}}:{{!arg {{$i}}}},}}"
     when 'unkmacro'
       #"UNKNOWN-MACRO:!{{!.{{$0}}}}."
       "UNKNOWN-MACRO:!{{!.{{$1}}}}."
+    when 'digesttest'
+       "({{$00}}:{{!digest blabla{{$00}}}})"
     else
       nil
       #"UNK_TEMPL(#{tname})"
@@ -599,6 +609,8 @@ describe TracWiki::Parser do
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]", :no_link=>true)
     tc("<p><img alt=\"a%22tag%22\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]")
     tc("<p><img alt=\"a%22tag%22\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]", :no_link=>true)
+    tc("<p><a href=\"ahoj\"><img alt=\"a%22tag%22\" src=\"image.jpg\"/></a></p>\n", "[[Image(image.jpg,alt=a\"tag\",link=ahoj)]]", :no_link=>true)
+    tc("<p><a href=\"javascript%253Aalert%2528666%2529\"><img alt=\"a%22tag%22\" src=\"image.jpg\"/></a></p>\n", "[[Image(image.jpg,alt=a\"tag\",link=javascript:alert(666))]]", :no_link=>true)
 
     # Malicious links should not be converted.
     tc("<p><a href=\"javascript%3Aalert%28%22Boo%21%22%29\">Click</a></p>\n", "[[javascript:alert(\"Boo!\")|Click]]")
@@ -1063,20 +1075,27 @@ eos
     tc "<p>,2</p>\n", "{{!yset ahoj|data: [1,2]\ndesc: malo}},{{$ahoj.data.1}}"
     tc "<p>AHOJ,dve</p>\n", "{{ytest2 \nahoj: AHOJ\nbhoj: [ jedna, dve ]\n}}"
     tc "<p>,,BHOJ</p>\n", "{{!set ahoj|AHOJ}},{{!set AHOJ|BHOJ}},{{$$ahoj}}"
-    tc "<p>(0),(1),(2),</p>\n", "{{!for i|3|({{$i}}),}}", allow_html: true
-    tc "<p>(0),(1),(2),(3),</p>\n", "{{!for i|4|({{$i}}),}}", allow_html: true
-    tc "<p>,(ALFA),(BETA),</p>\n", "{{!yset data|[ALFA,BETA]}},{{!for i|data|({{$data.$i}}),}}"
-    tc "<p>,(1),(2),</p>\n", "{{!yset data|[1,2]}},{{!for i|data|({{$data.$i}}),}}"
-    tc "<p>,(alfa:ALFA),(beta:BETA),</p>\n", "{{!yset data|beta: BETA\nalfa: ALFA\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
-    tc "<p>,(0:1),(1:2),</p>\n", "{{!yset data|[ 1,2 ]\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
-    tc "<p>,</p>\n", "{{!yset data|[  ]\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
 
     tc "<p>,FALSE</p>\n", "{{!yset data|[1,2]}},{{!ifdef data.55|TRUE|FALSE}}"
     tc "<p>,TRUE</p>\n", "{{!yset data|[1,2]}},{{!ifdef data.1|TRUE|FALSE}}"
     tc "<p>,TRUE</p>\n", "{{!yset data|{a: 1, b: 2} }},{{!ifdef data.a|TRUE|FALSE}}"
     tc "<p>,FALSE</p>\n", "{{!yset data|{a: 1, b: 2} }},{{!ifdef data.q|TRUE|FALSE}}"
   end
-
+  it 'should parse !for' do
+    tc "<p>(1),(2),(3),</p>\n", "{{!for i|1,3|({{$i}}),}}", allow_html: true
+    tc "<p>(2),(3),</p>\n", "{{!for i|2,3|({{$i}}),}}", allow_html: true
+    tc "<p>(3),</p>\n", "{{!for i|3,3|({{$i}}),}}", allow_html: true
+    tc "<p>(0),(1),(2),(3),(4),</p>\n", "{{!for i|,4|({{$i}}),}}", allow_html: true
+    tc "<p>,(ALFA),(BETA),</p>\n", "{{!yset data|[ALFA,BETA]}},{{!for i|data|({{$data.$i}}),}}"
+    tc "<p>,(1),(2),</p>\n", "{{!yset data|[1,2]}},{{!for i|data|({{$data.$i}}),}}"
+    tc "<p>,(alfa:ALFA),(beta:BETA),</p>\n", "{{!yset data|beta: BETA\nalfa: ALFA\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
+    tc "<p>,(0:1),(1:2),</p>\n", "{{!yset data|[ 1,2 ]\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
+    tc "<p>,</p>\n", "{{!yset data|[  ]\n}},{{!for i|data|({{$i}}:{{$data.$i}}),}}"
+  end
+  it 'should parse argi' do
+    tc "<p>1:one.</p>\n", "{{argi one|two|i=1}}"
+    tc "<p>2:two.</p>\n", "{{argi one|two|i=2}}"
+  end
   it 'should parse html' do
     tc "<p>alert(666)</p>\n", "<script>alert(666)</script>", allow_html: true
     tc "<p><b>T</b>E</p>\n", "<p><b>T</b>E</p>", allow_html: true
@@ -1114,8 +1133,8 @@ eos
     tc "<p>d<strong>e</strong></p>\n", "{{!ifeq a|b|c|d*\\\n*e**}}"
     tc "<p>d<strong>e</strong></p>\n", "{{!ifeq a|b|c|d*\\\r\n*e**}}"
     tc "<p>e</p>\n", "{{!ifeq a|b|c|\\\r\ne}}"
-    tc "<p>a0a1a2</p>\n", "{{!for i|3|a\\\n{{$i}}}}"
-    tc "<p>a0a1a2</p>\n", "{{!for i|3|a\\\n   {{$i}}}}"
+    tc "<p>a1a2a3</p>\n", "{{!for i|1,3|a\\\n{{$i}}}}"
+    tc "<p>a0a1a2a3</p>\n", "{{!for i|0,3|a\\\n   {{$i}}}}"
   end
   it 'should parse offset' do
     tc "<p>0</p>\n", "{{$offset}}"
@@ -1252,10 +1271,20 @@ eos
      tc "<div class=\"AHOJ\">TEST</div>\n", "{{!set ahoj|AHOJ}}<div class=\"{{$ahoj}}\">TEST</div></p>\n", allow_html: true
      tc "<div class=\"**AHOJ**\">TEST</div>\n", "{{!set ahoj|AHOJ}}<div class=\"**{{$ahoj}}**\">TEST</div></p>\n", allow_html: true
   end
+  it 'should parse label' do
+     tc "<p><label class=\"xxx\" for=\"ble\">AHOJ</label></p>\n", "<label class=\"xxx\" for=\"ble\">AHOJ</label>\n", allow_html: true
+  end
   it 'should parse at_callback ' do
      tc "<p>WUF</p>\n", "{{$MEOW|meow}}\n"
      tc "<p>meow</p>\n", "{{$UNKVAR|meow}}\n"
      tc "<p>cat:</p>\n", "cat:{{$UNKVAR}}\n"
+  end
+  it 'should argcount ' do
+    tc "<p>0,0</p>\n", "{{argcount}}"
+    tc "<p>1,1</p>\n", "{{argcount one}}"
+    tc "<p>2,2</p>\n", "{{argcount one|two}}"
+    tc "<p>2,3</p>\n", "{{argcount one|two|blaf=haf}}"
+    tc "<p>0,3</p>\n", "{{argcount one=1|two=2|blaf=haf}}"
   end
   it 'should parse data-* ' do
      tc "<div data-coffie=\"tea\">TEST</div>\n", "<div data-coffie=\"tea\">TEST</div>\n", allow_html: true
@@ -1263,6 +1292,38 @@ eos
      tc "<div>TEST</div>\n", "<div data-coffie-break9=\"tea\">TEST</div>\n", allow_html: true
 
      tc "<p>&lt;div data-coffie-break=&quot;tea&quot;&gt;TEST&lt;/div&gt;</p>\n", "<div data-coffie-break=\"tea\">TEST</div>\n", allow_html: false
+  end
+  it 'should forargs' do
+    tc "<p>1:jedna,2:dva,3:tri,</p>\n", "{{forargs jedna|dva|tri}}", allow_html: true
+    tc "<p>2:dva,3:tri,</p>\n", "{{forargs2 jedna|dva|tri}}", allow_html: true
+  end
+  it 'should parse digest' do
+    tc "<p>wFNeS-K3n_2TKRMFQ2v4iTFOSj-uwF7P_Lt98xrZ5Ro=</p>\n", "{{!digest Hello world!}}"
+    tc "<p>wFNeS-K3n_2TKRMFQ2v4iTFOSj-uwF7P_Lt98xrZ5Ro=</p>\n", "{{!digest  Hello world!}}"
+    tc "<p>wFNeS-K3n_2TKRMFQ2v4iTFOSj-uwF7P_Lt98xrZ5Ro=</p>\n", "{{!set ahoj|Hello world!}}{{!digest {{$ahoj}}}}"
+    tc "<p>qj7BbmrMgJ2LKBhmInYlar_S8bRBy1FXSTPz1L0RXRE=</p>\n", "{{!set ahoj|Hello world.}}{{!digest {{$ahoj}}}}"
+  end
+  it 'should parse sprintf' do
+    tc "<p>001</p>\n", "{{!sprintf %03i|1}}"
+    tc "<p>0001-3.14</p>\n", "{{!sprintf %04i-%.2f|1|3.1415}}"
+    tc "<p><tt>   ahoj</tt></p>\n", "{{!sprintf `%7s`|ahoj}}"
+    tc "<p><tt>ahoj   </tt></p>\n", "{{!sprintf `%-7s`|ahoj}}"
+    tc "<p>(sprintf error:<tt>malformed format string - %*[0-9]</tt>)</p>\n", "{{!sprintf %03|1}}"
+  end
+  it 'should parse !append' do
+    tc "<p>value</p>\n", "{{!set var|value}}{{$var}}"
+    tc "<p>value</p>\n", "{{!append var|value}}{{$var}}"
+    tc "<p>valuebalue</p>\n", "{{!append var|value}}{{!append var|balue}}{{$var}}"
+    tc "<p>value:balue</p>\n", "{{!append var|value}}{{!append var|balue|:}}{{$var}}"
+  end
+  it 'should parse sprintf' do
+    tc "<p><tt>ahoj</tt></p>\n", "{{!tt ahoj}}"
+    tc "<p>YWhvanRl</p>\n", "{{!base64 ahojte}}"
+    tc "<p>(ahojte:FuVx_SBpN3croY9zm4j14xVw19yIHsyZIzErSffwPpY=)</p>\n", "{{digesttest ahojte}}"
+    tc "<p>(bhojte:iwqSnWkQXpGogNtIXpDr8TYIcwJFQTKOLQgG7b9VFVg=)</p>\n", "{{digesttest bhojte}}"
+    tc "<p>(bhojte|ahoj=qhoj:6o2F88ZwLtQadp-8O6ArYIPcePy8_h_rg_2Fsa0EUv0=)</p>\n", "{{digesttest bhojte|ahoj=qhoj}}"
+    tc "<p>(bhojte|ahoj=dhoj:m8afmveEhG78gsv5Pt-gJ56idfKCR10JNPr-G72Fttc=)</p>\n", "{{digesttest bhojte|ahoj=dhoj}}"
+    tc "<p><tt>ah!@\#$%^&amp;*()[]oj</tt></p>\n", "{{!tt ah!@\#$%^&*()[]oj}}"
   end
 end
 # vim: tw=0

@@ -148,11 +148,12 @@ module TracWiki
                      :b, :tt, :u, :del, :blockquote, :strong, :em, :sup, :sub, :i,
                      :table,  :tr, :td, :th,
                      :br , :img, :hr,
-                     :form, :textarea, :input, :select, :option,
+                     :form, :textarea, :input, :select, :option, :label,
      ]
      TAGS_SKIP_EMPTY = [ :p , :ol, :li, :strong, :em  ]
      ATTRIBUTES_ALLOWED = { :form  =>  [:action, :method],
                             :input =>  [:size, :type, :value, :name],
+                            :textarea => [:name, :rows, :cols],
                             :select => [:multiple, :name],
                             :option => [:disabled, :selected, :label, :value, :name],
                             :a     =>  [:name, :href],
@@ -160,6 +161,7 @@ module TracWiki
                             :td    =>  [:colspan, :rowspan, :style],
                             :th    =>  [:colspan, :rowspan, :style],
                             :ol    =>  [:type ],
+                            :label =>  [:for],
                             :_all  =>  [:class, :title, :id, :style],
                            }
 

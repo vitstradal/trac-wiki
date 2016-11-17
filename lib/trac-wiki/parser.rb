@@ -2,6 +2,8 @@
 require 'cgi'
 require 'uri'
 require 'yaml'
+require 'base64'
+require 'digest/sha2'
 require 'unicode_utils/compatibility_decomposition'
 
 # :main: TracWiki
@@ -131,10 +133,10 @@ module TracWiki
 
     # macro {{$var}} | {{#comment}} | {{!cmd}} |  {{template}} | {{/template}}
     # string begins with macro
-    MACRO_BEG_REX =  /\A\{\{ ( \$[\$\.\w]+ | [\#!\/]\w* |\w+ ) /x
-    MACRO_BEG_INSIDE_REX =  /\A(.*?) (?<!\{|!|!\{) \{\{ ( \$[\$\.\w]+ | [\#!\/]\w* | \w+ ) /xm
+    MACRO_BEG_REX =  /\A\{\{ ( \$[#\$\.\w]+ | [\#!\/]\w* |\w+ ) /x
+    MACRO_BEG_INSIDE_REX =  /\A(.*?) (?<!\{|!|!\{) \{\{ ( \$[#\$\.\w]+ | [\#!\/]\w* | \w+ ) /xm
     # find end of marcro or begin of inner macro
-    MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ ( \$[\$\.\w]+ | [\#!\/]\w* | \w+)  )/mx
+    MACRO_END_REX =  /\A(.*?) ( \}\} | \{\{ ( \$[#\$\.\w]+ | [\#!\/]\w* | \w+)  )/mx
 
     # Create a new Parser instance.
     def initialize(options = {})
@@ -222,34 +224,93 @@ module TracWiki
                          },
         '!ifdef' => proc { |env| env.at(env.expand_arg(0), nil, false).nil? ? env.expand_arg(2) : env.expand_arg(1) },
         '!set'   => proc { |env| env[env.expand_arg(0)] = env.expand_arg(1); '' },
+        '!append'=> proc { |env| key = env.expand_arg(0)
+                                 sep = env.expand_arg(2,'')
+                                 env[key] = (env[key].nil? ? '' : env[key] + sep ) + env.expand_arg(1);
+                                 ''
+                         },
         '!yset'  => proc { |env| env[env.expand_arg(0)] = YAML.load(env.arg(1)); '' },
         '!sub'   => proc { |env| pat = env.expand_arg(1)
                                  pat = Regexp.new(pat[1..-2]) if pat =~ /\A\/.*\/\Z/
                                  env.expand_arg(0).gsub(pat, env.expand_arg(2))
                          },
-        '!macpos' => proc { |env| "#{env.at('lineno')}.#{env.at('offset')}-#{env.at('elineno')}.#{env.at('eoffset')}"  },
+        '!macpos'=> proc { |env| "#{env.at('lineno')}.#{env.at('offset')}-#{env.at('elineno')}.#{env.at('eoffset')}"  },
+        # in macro {{arg {{$i}}} -> i=4 => ctyry
+        '!arg'   => proc { |env|
+             #print "arg: #{env.arg(0)}, #{env} }"
+             "#{env.at(env.expand(env.arg(0)))}"
+             },
+
+        # {{!forargs i|3|i:{$$i}}}} -> 0,1,2
+        # {{!forargs i||i:{$$i}}}} -> 0,1,2
+        '!sprintf'   => proc { |env|
+                               fmt = env.arg(0)
+                               args = (1 .. env.arg_count ).map{ |i| env.expand_arg(i)}
+                               begin
+                                 sprintf fmt, *args
+                               rescue Exception => e
+                                 "(sprintf error:`#{e}`)" 
+                               end
+                        },
+        '!digest'    => proc { |env| Base64.urlsafe_encode64(Digest::SHA256.digest(env.expand_arg(0))) },
+        '!base64'    => proc { |env| Base64.urlsafe_encode64(env.expand_arg(0)) },
+        '!tt'        => proc { |env| "`#{env.expand_arg(0)}`" },
+        '!forargs'   => proc { |env| i_name = env.arg(0)
+                               i_name = env.arg(0)
+                               start = env.arg(1).to_i # side efect '' => 0
+                               start = 1 if start < 1
+                               template = env.arg(2)
+                               argcount =
+                               (start .. env.arg_count ).map do |i|
+                                 env.atput(i_name, i.to_s)
+                                 env.expand(template)
+                               end.join('')
+                         },
+        # {{!for i|1,3|i:{$$i}}}} -> 0,1,2
+        # {{!for i|1,3,data|i:{$$i}}}} -> data[1,2,3]
+        # {{!for i|data|i:{$$i}}}} -> vsechny data
+        # {{!for i|1|i:{$$i}}}} -> vsechny data
         '!for'   => proc { |env| i_name = env.arg(0)
-                               top = env.arg(1)
-                               tmpl = env.arg(2)
-                               #print "top#{top}\n"
-                               if top =~ /^\d+/
-                                 set = (0..(top.to_i-1))
+
+                               raise "!for takes exactly 3 argumentsif not #{env.arg_count}" if env.arg_count != 3
+
+                               i_name = env.arg(0)
+                               range =  env.expand_arg(1)
+                               templ =  env.arg(2)
+
+                               arange = range.split(/,/)
+                               arange = [ nil, nil, arange[0]] if arange.size == 1
+
+                               bot = arange[0]
+                               top = arange[1]
+                               var = arange[2]
+
+                               if var.nil?
+                                 set = (bot.to_i||1 .. top.to_i)
                                else
-                                 set = env.at(top, nil, false)
-                                 if set.is_a?(Hash)
-                                   set = set.keys.sort
-                                 elsif set.is_a?(Array)
-                                   set = (0 .. set.size-1)
-                                 elsif set.nil?
+                                 obj = env.at(var, nil, false)
+
+                                 if obj.is_a?(Hash)
+                                   set = obj.keys.sort
+                                 elsif obj.is_a?(Array)
+                                   #print "ble:#{bot} #{bot}, #{obj.size}\n"
+                                   set = (bot||0 .. obj.size-1)
+                                 elsif obj.nil?
                                    set = []
                                  else
-                                   print "error top(#{top}), set#{set} #{set.class}\n"
-                                   raise "Error in {{!for #{i_name}|#{top}|#{tmpl}}} $#{top}.class=#{set.class}(#{set.to_s})"
+                                   raise "Error: wrong arg #{obj} class='#{obj.class}'"
                                  end
                                end
+                               #set.select! { |x| x >= bot } if bot
+                               #set.select! { |x| x <= top } if top
+
+                               #print "for set#{set} tmpl#{templ||"nic"}\n"
+
                                set.map do |i|
+                                 #print "for#{i} #{templ}\n"
                                  env[i_name] = i.to_s
-                                 env.expand(tmpl)
+                                 env.atput(i_name, i.to_s)
+                                 env.expand(templ)
                                end.join('')
                        },
       }
@@ -367,7 +428,12 @@ module TracWiki
     # markup, for example to add html additional attributes or
     # to put divs around the imgs.
     def make_image(uri, attrs='')
-      @tree.tag(:img, make_image_attrs(uri, attrs))
+      attrs =  make_image_attrs(uri, attrs)
+      link = attrs.delete('link')
+
+      @tree.tag_beg(:a, {href: make_explicit_link(link)}) if link
+      @tree.tag(:img, attrs)
+      @tree.tag_end(:a) if link
     end
 
     def make_image_attrs(uri, attrs)
@@ -383,7 +449,7 @@ module TracWiki
            when  /^(top|bottom|middle)$/i
              a['valign'] = escape_url(opt)
            when  /^link=(.*)$/i
-             # pass
+             a['link'] = escape_url($1)
            when  /^nolink$/i
              # pass
            when /^(align|valign|border|width|height|alt|title|longdesc|class|id|usemap)=(.*)$/i

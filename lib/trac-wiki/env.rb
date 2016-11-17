@@ -101,8 +101,8 @@ module TracWiki
       @env[:cmd_args].size
     end
 
-    def arg(idx)
-      @env[:cmd_args][idx] || ''
+    def arg(idx, default = nil)
+      @env[:cmd_args][idx] || default || ''
     end
 
     def prepare_y
@@ -265,8 +265,8 @@ module TracWiki
     end
 
     # template expand
-    def expand_arg(idx)
-      expand(arg(idx))
+    def expand_arg(idx, default = nil)
+      expand(arg(idx, default))
     end
 
     def pp_env
