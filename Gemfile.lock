@@ -1,20 +1,23 @@
 PATH
   remote: .
   specs:
-    trac-wiki (0.3.31)
+    trac-wiki (0.3.35)
 
 GEM
   remote: https://rubygems.org/
   specs:
-    bacon (1.2.0)
-    rake (10.3.2)
+    bacon (0.9.0)
+    rake (0.9.6)
     unicode_utils (1.4.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  bacon
-  rake
+  bacon (~> 0)
+  rake (~> 0)
   trac-wiki!
   unicode_utils
+
+BUNDLED WITH
+   1.16.1

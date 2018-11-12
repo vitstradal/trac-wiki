@@ -2,10 +2,11 @@
 
 require 'trac-wiki'
 require 'pp'
+require 'bacon'
 
-class Bacon::Context
-end
-describe TracWiki::Parser do
+#class Bacon::Context
+#end
+describe 'TracWiki::Parser' do
  it 'should work' do 
    t = TracWiki::Tree.new
    t.tag_beg(:div, {:class => 'html'})

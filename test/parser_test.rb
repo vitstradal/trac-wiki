@@ -13,6 +13,16 @@ class Bacon::Context
     parser.at_callback = Proc.new { |k,env| k == 'MEOW' ? 'WUF' : nil }
     html.should.equal parser.to_html(wiki)
   end
+  def tc_mailto(html, wiki, options = {})
+    options[:macro_commands] = { '!print' => proc { |env| env.arg(0) + '! ' }, 
+                               }
+    options[:allowed_schemes] = %w(http https ftp ftps mailto)
+    options[:template_handler] = self.method(:template_handler)
+
+    parser = TracWiki.parser(options)
+    parser.at_callback = Proc.new { |k,env| k == 'MEOW' ? 'WUF' : nil }
+    html.should.equal parser.to_html(wiki)
+  end
   def env(wiki, var, val,options = {})
     options[:macro_commands] = { '!print' => proc { |env| env.arg(0) + '! ' }, }
     options[:template_handler] = self.method(:template_handler)
@@ -98,7 +108,7 @@ class Bacon::Context
   end
 end
 
-describe TracWiki::Parser do
+describe 'TracWiki::Parser' do
   it 'should not parse linkd' do
     tc "<p>[[ahoj]]</p>\n", "[ahoj]", :no_link => true
     tc "<p>[[ahoj]]</p>\n", "[[ahoj]]", :no_link => true
@@ -179,6 +189,11 @@ describe TracWiki::Parser do
     # Italic can be used inside table cells
     tc("<table><tr><td>This is <em>italic</em></td>\n</tr>\n</table>\n",
        "||This is ''italic''||")
+
+
+    # table with div_around_table
+    tc("<div class=\"table-div\"><table><tr><td>This is <em>italic</em></td>\n</tr>\n</table>\n</div>\n",
+       "||This is ''italic''||", div_around_table: true)
 
     # Links can appear inside italic text:
     tc("<p>A italic link: <em><a href=\"http://example.org/\">http://example.org/</a> nice! </em></p>\n",
@@ -364,6 +379,7 @@ describe TracWiki::Parser do
 
     #  A table end paragraphs too.
     tc "<p>Hello</p>\n<table><tr><td>Cell</td>\n</tr>\n</table>\n", "Hello\n||Cell||"
+
 
     #  A nowiki end paragraphs too.
     tc "<p>Hello</p>\n<pre>nowiki</pre>", "Hello\n{{{\nnowiki\n}}}\n"
@@ -607,10 +623,11 @@ describe TracWiki::Parser do
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]")
     tc("<p><img src=\"/ahoj/bhoj/bla/image.jpg\"/></p>\n", "[[Image(bla/image.jpg)]]", :base => "/ahoj/bhoj", :no_escape => true)
     tc("<p><img src=\"image.jpg\"/></p>\n", "[[Image(image.jpg)]]", :no_link=>true)
-    tc("<p><img alt=\"a%22tag%22\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]")
-    tc("<p><img alt=\"a%22tag%22\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]", :no_link=>true)
-    tc("<p><a href=\"ahoj\"><img alt=\"a%22tag%22\" src=\"image.jpg\"/></a></p>\n", "[[Image(image.jpg,alt=a\"tag\",link=ahoj)]]", :no_link=>true)
-    tc("<p><a href=\"javascript%253Aalert%2528666%2529\"><img alt=\"a%22tag%22\" src=\"image.jpg\"/></a></p>\n", "[[Image(image.jpg,alt=a\"tag\",link=javascript:alert(666))]]", :no_link=>true)
+    tc("<p><img alt=\"a&quot;tag&quot;\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]")
+    tc("<p><img alt=\"a&quot;tag&quot;\" src=\"image.jpg\"/></p>\n", "[[Image(image.jpg,alt=a\"tag\")]]", :no_link=>true)
+    tc("<p><a href=\"ahoj\"><img alt=\"a&quot;tag&quot;\" src=\"image.jpg\"/></a></p>\n", "[[Image(image.jpg,alt=a\"tag\",link=ahoj)]]", :no_link=>true)
+    tc("<p><a href=\"ahoj/bhoj\"><img alt=\"a&quot;tag&quot;\" src=\"image.jpg\"/></a></p>\n", "[[Image(image.jpg,alt=a\"tag\",link=ahoj/bhoj)]]", :no_escape => true, :no_link=>true)
+    tc("<p><a href=\"javascript%3Aalert%28666%29\"><img alt=\"a&quot;tag&quot;\" src=\"image.jpg\"/></a></p>\n", "[[Image(image.jpg,alt=a\"tag\",link=javascript:alert(666))]]", :no_link=>true)
 
     # Malicious links should not be converted.
     tc("<p><a href=\"javascript%3Aalert%28%22Boo%21%22%29\">Click</a></p>\n", "[[javascript:alert(\"Boo!\")|Click]]")
@@ -884,7 +901,7 @@ describe TracWiki::Parser do
     tc("<p><img src=\"image.jpg\" valign=\"middle\"/></p>\n", "[[Image(image.jpg, middle)]]")
     tc("<p><img src=\"image.jpg\" title=\"houhouhou\"/></p>\n", "[[Image(image.jpg, title=houhouhou)]]")
     tc("<p><img src=\"image.jpg\" width=\"120px\"/></p>\n", "[[Image(image.jpg,width=120px)]]")
-    tc("<p><img src=\"image.jpg\" width=\"120%25\"/></p>\n", "[[Image(image.jpg, width=120%)]]")
+    tc("<p><img src=\"image.jpg\" width=\"120%\"/></p>\n", "[[Image(image.jpg, width=120%)]]")
     tc("<p><img src=\"image.jpg\" style=\"margin:5\"/></p>\n", "[[Image(image.jpg,margin=5)]]")
     tc("<p><img src=\"http://example.org/image.jpg\"/></p>\n", "[[Image(http://example.org/image.jpg)]]")
   end
@@ -1324,6 +1341,13 @@ eos
     tc "<p>(bhojte|ahoj=qhoj:6o2F88ZwLtQadp-8O6ArYIPcePy8_h_rg_2Fsa0EUv0=)</p>\n", "{{digesttest bhojte|ahoj=qhoj}}"
     tc "<p>(bhojte|ahoj=dhoj:m8afmveEhG78gsv5Pt-gJ56idfKCR10JNPr-G72Fttc=)</p>\n", "{{digesttest bhojte|ahoj=dhoj}}"
     tc "<p><tt>ah!@\#$%^&amp;*()[]oj</tt></p>\n", "{{!tt ah!@\#$%^&*()[]oj}}"
+  end
+  it 'should parse mailto' do
+    tc_mailto "<p><a href=\"mailto:vitas@matfyz.cz\">mailto:vitas@matfyz.cz</a></p>\n", "[[mailto:vitas@matfyz.cz]]\n"
+    tc_mailto "<p><a href=\"mailto:vitas@matfyz.cz\">vitas</a></p>\n", "[[mailto:vitas@matfyz.cz | vitas]]\n"
+    tc_mailto "<p><a href=\"mailto:vitas@matfyz.cz?subject=napis\">vitas</a></p>\n", "[[mailto:vitas@matfyz.cz?subject=napis | vitas]]\n"
+    tc_mailto "<p><a href=\"mailto:vitas@matfyz.cz?body=odpovez\">vitas</a></p>\n", "[[mailto:vitas@matfyz.cz?body=odpovez | vitas]]\n"
+    tc "<p><a href=\"mailto%3Avitas%40matfyz.cz\">vitas</a></p>\n", "[[mailto:vitas@matfyz.cz | vitas]]\n"
   end
 end
 # vim: tw=0

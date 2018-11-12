@@ -58,6 +58,7 @@ module TracWiki
     # ]
     attr_accessor :headings
     attr_accessor :env
+    attr_accessor :base_url
 
     attr_reader :used_templates
     @used_templates = {}
@@ -79,6 +80,10 @@ module TracWiki
     # [[whatwerver]] stays [[whatwerver]]
     attr_writer :no_link
     def no_link?; @no_link; end
+
+    # Enable <div> around <table>
+    attr_writer :div_around_table
+    def div_around_table?; @div_around_table; end
 
     # math syntax extension:
     # $e^x$ for inline math
@@ -162,8 +167,9 @@ module TracWiki
 
     def was_math?; @was_math; end
 
-    def to_html(text = nil)
+    def to_html(text = nil, base_url = '')
       text(text) if ! text.nil?
+      @base_url = base_url
       @used_templates = {}
       @was_math = false
       @anames = {}
@@ -320,7 +326,7 @@ module TracWiki
     # Escape any characters with special meaning in HTML using HTML
     # entities. (&<>" not ')
     def escape_html(string)
-      Parser.escapeHTML(string)
+      string.nil? ? '' : Parser.escapeHTML(string)
     end
 
     def self.escapeHTML(string)
@@ -443,19 +449,19 @@ module TracWiki
        attrs.strip.split(/\s*,\s*/).each do |opt|
          case opt
            when /^\d+[^\d]*$/
-             a['width'] = escape_url(opt)
+             a['width'] = opt
            when /^(right|left|center)/i
-             a['align'] = escape_url(opt)
+             a['align'] = opt
            when  /^(top|bottom|middle)$/i
-             a['valign'] = escape_url(opt)
+             a['valign'] = opt
            when  /^link=(.*)$/i
-             a['link'] = escape_url($1)
+             a['link'] = $1
            when  /^nolink$/i
              # pass
            when /^(align|valign|border|width|height|alt|title|longdesc|class|id|usemap)=(.*)$/i
-            a[$1]= escape_url($2)
+            a[$1]= $2
            when /^(margin|margin-(left|right|top|bottom))=(\d+)$/
-            style.push($1 + ':' + escape_url($3))
+            style.push($1 + ':' + $3)
          end
        end
        a[:style] = style.join(';') if ! style.empty?
@@ -476,7 +482,7 @@ module TracWiki
     end
 
     def edit_heading_link(section)
-        @tree.tag(:a, { class:  @edit_heading_class, id:"h#{section}", href: "?edit=#{section}"}, "edit")
+        @tree.tag(:a, { class:  @edit_heading_class, id:"h#{section}", href: "#{@base_url}?edit=#{section}"}, "edit")
     end
 
     def make_explicit_link(link)
@@ -805,6 +811,7 @@ module TracWiki
     def do_table_row(text)
       if !@stack.include?('table')
         end_paragraph
+        start_tag('div', class: 'table-div') if div_around_table?
         start_tag('table')
       end
       parse_table_row(text)

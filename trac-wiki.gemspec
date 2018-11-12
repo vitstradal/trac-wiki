@@ -5,7 +5,7 @@ Gem::Specification.new do |s|
   s.name = 'trac-wiki'
   s.version = TracWiki::VERSION
   s.date = Date.today.to_s
-  s.licenses = ['GPL-2']
+  s.licenses = ['GPL-2.0+']
 
   s.authors = ['Vitas Stradal']
   s.email = ['vitas@matfyz.cz' ]
@@ -20,6 +20,6 @@ Gem::Specification.new do |s|
 
   s.homepage = 'http://github.com/vitstradal/trac-wiki'
 
-  s.add_development_dependency('bacon')
-  s.add_development_dependency('rake')
+  s.add_development_dependency('bacon', '~> 0')
+  s.add_development_dependency('rake', '~> 0')
 end
