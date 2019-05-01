@@ -91,7 +91,7 @@ module TracWiki
     attr_writer :math
     def math?; @math; end
 
-    # allow some <b> <form> <html> 
+    # allow some <b> <form> <html>
     # html will be sanitized
     attr_writer :allow_html
     def allow_html?; @allow_html; end
@@ -255,7 +255,7 @@ module TracWiki
                                begin
                                  sprintf fmt, *args
                                rescue Exception => e
-                                 "(sprintf error:`#{e}`)" 
+                                 "(sprintf error:`#{e}`)"
                                end
                         },
         '!digest'    => proc { |env| Base64.urlsafe_encode64(Digest::SHA256.digest(env.expand_arg(0))) },
@@ -373,6 +373,13 @@ module TracWiki
         end
       else
         start_tag(tag)
+      end
+    end
+
+    def end_to_tag(tag)
+      if @stack.include?(tag)
+        end_tag while @stack.last != tag
+        end_tag
       end
     end
 
@@ -515,7 +522,7 @@ module TracWiki
           notlink, link = $1, $2
           make_link(link, nil, link, 0, !!notlink)
         # [[Image(pic.jpg|tag)]]
-        when str =~ /\A\[\[Image\(([^,]*?)(,(.*?))?\)\]\]/   # image 
+        when str =~ /\A\[\[Image\(([^,]*?)(,(.*?))?\)\]\]/   # image
           make_image($1, $3)
         # [[link]]
         #          [     link2          | text5          ]
@@ -543,7 +550,7 @@ module TracWiki
         when math? && str =~ /\A\$(.+?)\$/       # inline math  (tt)
           @tree.tag(:span, {:class => 'math'},  $1)
           @was_math = true
-        when str =~ /\A(\&\w*;)/       # html entity 
+        when str =~ /\A(\&\w*;)/       # html entity
           #print "add html ent: #{$1}\n"
           @tree.add_raw($1)
         when str =~ /\A([:alpha:]|[:digit:])+/
@@ -571,7 +578,7 @@ module TracWiki
         when str =~ /\A,,/
           toggle_tag 'sub', $&            # _{}
         when str =~ /\A!\./
-          @tree.add('')                   # !. \relax 
+          @tree.add('')                   # !. \relax
         when str =~ /\A!(\{\{|[\S])/
           @tree.add($1)                   # !neco !{{
 #        when str =~ /\A!(\{\{)/
@@ -761,6 +768,29 @@ module TracWiki
       end_paragraph
       @tree.tag(:div, { class: "merge #{merge_class}" }, who)
     end
+
+    def do_wikimedia_table(text)
+      end_paragraph
+      start_tag(:table)
+      start_tag(:tr)
+      offset = 0
+      text.split("\n").each do |line|
+        offset += line.length + 1
+        if line == '|-'
+          end_to_tag :tr
+          start_tag(:tr)
+        elsif line =~ /^([!\|])(.*)/
+          end_to_tag :td
+          fst, rest = $1, $2
+          start_tag($1 == '|'  ? :td : :th)
+          parse_inline(rest.strip, offset)
+        else
+          parse_inline(' ' +line.strip, offset)
+        end
+      end
+      end_to_tag :table
+    end
+
     def do_pre(text)
       end_paragraph
       nowikiblock = make_nowikiblock(text)
@@ -876,6 +906,9 @@ module TracWiki
         # pre {{{ ... }}}
         when str =~ /\A\{\{\{\r?\n(.*?)\r?\n\}\}\}/m
           do_pre($1)
+        # wikimedia table {| ... |}
+        when str =~ /\A\{\|\r?\n(.*?)\r?\n\|\}/m
+          do_wikimedia_table($1)
         # horizontal rule
         when str =~ /\A\s*-{4,}\s*$/
           do_hr()
@@ -892,11 +925,11 @@ module TracWiki
         #when str =~ /\A([:\w\s]+)::(\s+|\r?\n)/
         when str =~ /\A(.+)::(\s+|\r?\n)/
           do_term($1)
-        # li
+        # li *
         when str =~ /\A((\s*)([*-]|[aAIi\d]\.)\s+)(.*?)$(\r?\n)?/
           parse_li_line($2.size, $3)
           parse_inline($4, $1.size)
-        # citation
+        # citation >
         when str =~ /\A(>[>\s]*)(.*?)$(\r?\n)?/
           do_citation($1.count('>'))
           parse_inline($2, $1.size)

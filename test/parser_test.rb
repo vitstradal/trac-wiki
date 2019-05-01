@@ -675,6 +675,11 @@ describe 'TracWiki::Parser' do
     tc "<p>-- --</p>\n", "--\t-- "
   end
 
+  it 'should parse wm-table' do
+    tc "<table><tr><td>Hello</td>\n<th>World!</th>\n</tr>\n<tr><td>Hello</td>\n<td>World!</td>\n</tr>\n</table>\n", "{|\n|Hello\n!World!\n|-\n|Hello\n|World!\n|}\n\n"
+    tc "<table><tr><td><strong>Hello</strong></td>\n<td>World!</td>\n</tr>\n<tr><td>Hello</td>\n<td>World!</td>\n</tr>\n</table>\n", "{|\n|**Hello**\n|World!\n|-\n|Hello\n|World!\n|}\n\n"
+    tc "<table><tr><td><strong>Hello</strong></td>\n<td>Wor ld</td>\n</tr>\n</table>\n", "{|\n|**Hello**\n|Wor\nld\n|}\n\n"
+  end
   it 'should parse table' do
     tc "<table><tr><td>Hello</td>\n<td>World!</td>\n</tr>\n</table>\n", "||Hello||World!||"
     tc "<table><tr><td>Hello</td>\n<td>World!</td>\n</tr>\n<tr><td>Hello</td>\n<td>World!</td>\n</tr>\n</table>\n", "||Hello||World!||\n||Hello||World!||\n\n"
