@@ -15,7 +15,7 @@ PLATFORMS
 
 DEPENDENCIES
   bacon (~> 0)
-  rake (>= 12.3.3)
+  rake (~> 12.3.3)
   trac-wiki!
   unicode_utils
 
