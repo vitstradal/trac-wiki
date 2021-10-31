@@ -21,5 +21,5 @@ Gem::Specification.new do |s|
   s.homepage = 'http://github.com/vitstradal/trac-wiki'
 
   s.add_development_dependency('bacon', '~> 0')
-  s.add_development_dependency('rake', '~> 0')
+  s.add_development_dependency('rake',  ">= 12.3.3" )
 end
