@@ -771,6 +771,9 @@ module TracWiki
 
     def do_wikimedia_table(text)
       end_paragraph
+      if div_around_table?
+        start_tag('div', class: 'table-div', 'data-line' => @line_no, 'data-lines' => text.count("\n"))
+      end
       start_tag(:table)
       start_tag(:tr)
       offset = 0
@@ -781,6 +784,7 @@ module TracWiki
           start_tag(:tr)
         elsif line =~ /^([!\|])(.*)/
           end_to_tag :td
+          end_to_tag :th
           fst, rest = $1, $2
           start_tag($1 == '|'  ? :td : :th)
           parse_inline(rest.strip, offset)
